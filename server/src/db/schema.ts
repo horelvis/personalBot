@@ -1,5 +1,6 @@
 import type { Message } from "@ag-ui/core";
-import { bigserial, index, jsonb, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { bigserial, customType, index, jsonb, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -50,3 +51,26 @@ export const bots = pgTable("bots", {
   url: text("url").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
+
+/** Facts each person's bots remember about them. */
+export const memories = pgTable(
+  "memories",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // 'simple' does no language-specific stemming, so it treats every language the same.
+    search: tsvector("search")
+      .notNull()
+      .generatedAlwaysAs(sql`to_tsvector('simple', content)`),
+  },
+  (table) => [
+    index("memories_owner_created_idx").on(table.ownerId, table.createdAt),
+    index("memories_search_idx").using("gin", table.search),
+  ],
+);

@@ -2,6 +2,7 @@ import type { HttpAgentFetchFn } from "@ag-ui/client";
 import { Hono } from "hono";
 import type { Identify, User } from "./auth/identify.ts";
 import { type Database, ping } from "./db/index.ts";
+import { memoryRoutes } from "./memory/routes.ts";
 import { type BuiltinAgents, threadRoutes } from "./threads/routes.ts";
 
 export interface AppDependencies {
@@ -28,6 +29,7 @@ export function createApp({ db, identify, agentFetch, builtinAgents }: AppDepend
     await next();
   });
   api.route("/threads", threadRoutes(db, { agentFetch, builtinAgents }));
+  api.route("/memories", memoryRoutes(db));
   app.route("/api", api);
 
   return app;
