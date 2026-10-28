@@ -42,6 +42,12 @@ Respuesta del usuario: «Equipo/empresa».
 - Varios usuarios con inicio de sesión (OIDC genérico: Google, Microsoft Entra, Keycloak…), roles `admin` y `member`.
 - Un modo de desarrollo de usuario único (`SINGLE_USER=true`) que se niega a arrancar si `NODE_ENV=production`.
 - Check: tests de autenticación y de autorización por rol.
+- Supuestos (no pedidos explícitamente; decididos en T7, ver L12):
+  - La identidad es `issuer + sub` del ID token; el email solo se usa para mostrar y para las listas de acceso.
+  - Por defecto no entra nadie: `OIDC_ALLOWED_DOMAINS` lista los dominios de email admitidos (`*` admite cualquier identidad del issuer). Así, un issuer público como Google no abre el servidor a cualquier cuenta.
+  - `ADMIN_EMAILS` define quién es `admin` al iniciar sesión; el resto es `member`.
+  - Las sesiones viven en Postgres (cookie opaca `HttpOnly`, `SameSite=Lax` y `Secure` en producción; en la base solo se guarda el hash del token), así que se pueden revocar y no hace falta un secreto de firma.
+  - Autorización por rol: `GET /api/bots` para cualquier miembro y `POST /api/bots` (registrar un bot AG-UI por URL) solo para `admin`.
 
 **S6 — Gateway de herramientas con política y auditoría.**
 - Toda llamada a herramienta del bot integrado pasa por un gateway que decide (allow/deny por regla) y registra una fila de auditoría antes de actuar.
@@ -68,7 +74,7 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 | T4 | S4 | inline | [x] Bot integrado AG-UI con modelo configurable | eb2b7e1 |
 | T5 | S3 | inline | [x] Memoria: store, herramientas `remember`/`recall`, inyección en contexto | ffca3fc |
 | T6 | S6 | inline | [x] Gateway de herramientas: política + auditoría | 11a3e05 |
-| T7 | S5 | inline | [ ] Autenticación OIDC, roles, modo usuario único solo en desarrollo | |
+| T7 | S5 | inline | [ ] Autenticación OIDC, roles, modo usuario único solo en desarrollo. Commits: (a) sesiones + `SINGLE_USER`, (b) OIDC, (c) roles + `/api/bots` | |
 | T8 | S2, S4 | inline | [ ] App web: lista de hilos, chat con streaming, memorias | |
 | T9 | S7, S8 | inline | [ ] Dockerfile + compose completo, README honesto, LICENSE MIT | |
 
@@ -96,3 +102,5 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 **L10** Pausa en un punto estable: el usuario sale del agente para recargar la configuración (acaba de instalar gentle-ai y Engram). T1–T5 están completas y con commit; árbol limpio; 33/33 tests; `tsc` exit 0; `npm audit --omit=dev` = 0. **Siguiente: T6** (gateway de herramientas con política y auditoría), que debe envolver `runTool` en `server/src/assistant/agent.ts`. Sigue pendiente de S7 verificar `docker compose up` (Docker no estaba instalado). Para retomar: leer este documento hasta `## Log` y ejecutar `cd server && npx vitest run`.
 
 **L11** T6: RED observado (no existía `src/tool-gateway/gateway.ts`). GREEN: 38/38 tests y `tsc` exit 0. Tablas `tool_rules` (herramienta o `*`, allow/deny) y `tool_audit` (migración 0004). Una llamada se permite salvo que una regla que coincide la deniegue; deny gana. El gateway escribe la fila de auditoría antes de devolver la decisión. `agent.ts` consulta `authorize` antes de cada llamada, también para herramientas desconocidas. Una llamada denegada devuelve `tool_result` con `is_error` y la herramienta no se ejecuta. Si el gateway falla, el run termina en `RUN_ERROR` y la herramienta no se ejecuta (fail closed). Risk: item 2 (seguridad). Verificador independiente: S6 pass, sin blockers. Revisión RDD (lentes risk y reliability): aprobada, con acknowledgement hecho. Avisos no bloqueantes para trabajo posterior: (a) `effect` y `decision` no tienen CHECK en la base de datos, así que una regla escrita a mano con un valor como `Deny` se ignora y la llamada se permite; (b) `input ?? null` choca con `input NOT NULL`; (c) `audit()` no tiene criterio de desempate al ordenar; (d) falta un test de aislamiento entre usuarios en `audit()`; (e) `authorize` es opcional en `createAssistant`; (f) `tool_audit.user_id` usa `onDelete: cascade`, así que borrar un usuario borra su historial de auditoría. No hay rutas para administrar reglas (S6 no las pide). Mirror de Engram pendiente: `mem_current_project` no está disponible en esta sesión. **Siguiente: T7.**
+
+**L12** Arreglos tras T6: `98e9d6b` añade CHECK en Postgres a `tool_rules.effect` y `tool_audit.decision`, y deja `tool_audit.input` nullable. RED 3/3 → GREEN 41/41. RDD: `medium`, `under_budget` (queda pendiente en el tramo). El usuario pidió seguir en modo autónomo hasta que haga falta su intervención. T7: no hay ningún writer delegado (falta un motivo según el Writer trigger); se hace inline en tres commits. Risk: item 2 (auth) y 5 (dependencia nueva `openid-client` 6.8.8, de panva, con `jose` y `oauth4webapi`), así que habrá verificador independiente. Diseño hexagonal: un puerto `OidcProvider` con un adaptador sobre `openid-client` y un IdP falso en los tests. Supuestos de S5 anotados arriba.
