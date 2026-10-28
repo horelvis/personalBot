@@ -1,14 +1,21 @@
 import type { Message } from "@ag-ui/core";
 import { sql } from "drizzle-orm";
-import { bigserial, check, customType, index, jsonb, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { bigserial, check, customType, index, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  email: text("email").notNull().unique(),
-  name: text("name"),
-  role: text("role", { enum: ["admin", "member"] }).notNull().default("member"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull().unique(),
+    name: text("name"),
+    role: text("role", { enum: ["admin", "member"] }).notNull().default("member"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // Who the person is at the OpenID provider; the email can change there, these do not.
+    oidcIssuer: text("oidc_issuer"),
+    oidcSubject: text("oidc_subject"),
+  },
+  (table) => [uniqueIndex("users_oidc_identity_idx").on(table.oidcIssuer, table.oidcSubject)],
+);
 
 export const threads = pgTable(
   "threads",

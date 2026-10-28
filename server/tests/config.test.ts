@@ -33,4 +33,34 @@ describe("loadConfig", () => {
     expect(loadConfig({ DATABASE_URL: "postgres://x@localhost/x", SINGLE_USER: "true" }).singleUser).toBe(true);
     expect(loadConfig({ DATABASE_URL: "postgres://x@localhost/x" }).singleUser).toBe(false);
   });
+
+  it("reads OIDC settings and refuses an issuer without the variables it needs", () => {
+    const base = { DATABASE_URL: "postgres://x@localhost/x" };
+    expect(loadConfig(base).oidc).toBeUndefined();
+    expect(() => loadConfig({ ...base, OIDC_ISSUER: "https://idp.test" })).toThrow(/OIDC_CLIENT_ID/);
+    expect(() => loadConfig({ ...base, OIDC_ISSUER: "https://idp.test", OIDC_CLIENT_ID: "c" })).toThrow(/PUBLIC_URL/);
+    expect(() =>
+      loadConfig({ ...base, OIDC_ISSUER: "https://idp.test", OIDC_CLIENT_ID: "c", PUBLIC_URL: "https://bot.example.com" }),
+    ).toThrow(/OIDC_ALLOWED_DOMAINS/);
+
+    const config = loadConfig({
+      ...base,
+      OIDC_ISSUER: "https://idp.test",
+      OIDC_CLIENT_ID: "c",
+      OIDC_CLIENT_SECRET: "s",
+      PUBLIC_URL: "https://bot.example.com/",
+      OIDC_ALLOWED_DOMAINS: "example.com, Example.org",
+      ADMIN_EMAILS: "Boss@example.com",
+    });
+    expect(config.oidc).toEqual({
+      issuer: "https://idp.test",
+      clientId: "c",
+      clientSecret: "s",
+      redirectUri: "https://bot.example.com/auth/callback",
+      allowedDomains: ["example.com", "example.org"],
+      adminEmails: ["boss@example.com"],
+    });
+    expect(loadConfig({ ...base, OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", PUBLIC_URL: "http://l", OIDC_ALLOWED_DOMAINS: "*" }).oidc?.allowedDomains).toBe("*");
+  });
 });
+
