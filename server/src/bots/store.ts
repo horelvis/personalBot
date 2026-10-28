@@ -12,6 +12,17 @@ export function createBotStore(db: Database) {
       return bot;
     },
 
+    /** Creates the bot or brings its name, URL and description up to date. */
+    async ensure(input: { id: string; name: string; url: string; description?: string }): Promise<Bot> {
+      const [bot] = await db
+        .insert(bots)
+        .values(input)
+        .onConflictDoUpdate({ target: bots.id, set: { name: input.name, url: input.url, description: input.description ?? null } })
+        .returning();
+      if (!bot) throw new Error("bot not ensured");
+      return bot;
+    },
+
     async get(id: string): Promise<Bot | null> {
       const [bot] = await db.select().from(bots).where(eq(bots.id, id));
       return bot ?? null;

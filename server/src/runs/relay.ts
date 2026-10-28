@@ -1,24 +1,23 @@
-import { HttpAgent, type HttpAgentFetchFn } from "@ag-ui/client";
+import type { AbstractAgent } from "@ag-ui/client";
 import { type BaseEvent, EventType, type Message } from "@ag-ui/core";
 import { EventEncoder } from "@ag-ui/encoder";
-import type { Bot } from "../bots/store.ts";
 import type { ThreadStore } from "../threads/store.ts";
 
 export interface RelayTurn {
   threads: ThreadStore;
-  bot: Bot;
+  /** A fresh agent for this run: an HttpAgent for a bot reached by URL, or a built-in one. */
+  agent: AbstractAgent;
   threadId: string;
   runId: string;
   /** Called once the run is over, whatever its outcome. */
   release: () => Promise<void>;
-  agentFetch?: HttpAgentFetchFn;
 }
 
 /**
- * Runs one turn against an AG-UI bot with the history from our database and streams its events
+ * Runs one turn against an AG-UI agent with the history from our database and streams its events
  * back as SSE. The run belongs to the server: it finishes and is stored even if the browser leaves.
  */
-export async function relayTurn({ threads, bot, threadId, runId, release, agentFetch }: RelayTurn): Promise<ReadableStream<Uint8Array>> {
+export async function relayTurn({ threads, agent, threadId, runId, release }: RelayTurn): Promise<ReadableStream<Uint8Array>> {
   const history: Message[] = await threads.history(threadId);
   const encoder = new EventEncoder();
   const bytes = new TextEncoder();
@@ -38,7 +37,8 @@ export async function relayTurn({ threads, bot, threadId, runId, release, agentF
       };
 
       try {
-        const agent = new HttpAgent({ url: bot.url, threadId, initialMessages: history, fetch: agentFetch });
+        agent.threadId = threadId;
+        agent.setMessages(history);
         const result = await agent.runAgent({ runId }, { onEvent: ({ event }) => send(event) });
         await threads.append(threadId, result.newMessages);
       } catch (error) {

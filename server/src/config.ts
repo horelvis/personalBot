@@ -1,6 +1,8 @@
 export interface Config {
   databaseUrl: string;
   port: number;
+  /** The Claude model behind the built-in assistant. */
+  assistantModel: string;
 }
 
 type Environment = Record<string, string | undefined>;
@@ -14,5 +16,6 @@ export function loadConfig(environment: Environment): Config {
   return {
     databaseUrl,
     port: environment.PORT ? Number(environment.PORT) : 3001,
+    assistantModel: environment.ASSISTANT_MODEL?.trim() || "claude-opus-5-5",
   };
 }

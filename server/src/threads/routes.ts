@@ -1,8 +1,8 @@
-import type { HttpAgentFetchFn } from "@ag-ui/client";
+import { type AbstractAgent, HttpAgent, type HttpAgentFetchFn } from "@ag-ui/client";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { User } from "../auth/identify.ts";
-import { createBotStore } from "../bots/store.ts";
+import { type Bot, createBotStore } from "../bots/store.ts";
 import type { Database } from "../db/index.ts";
 import { relayTurn } from "../runs/relay.ts";
 import { ThreadBusyError, createThreadStore } from "./store.ts";
@@ -10,7 +10,22 @@ import { ThreadBusyError, createThreadStore } from "./store.ts";
 const newThreadBody = z.object({ botId: z.string().min(1), title: z.string().optional() });
 const runBody = z.object({ message: z.object({ id: z.string().min(1), content: z.string().min(1) }) });
 
-export function threadRoutes(db: Database, { agentFetch }: { agentFetch?: HttpAgentFetchFn }) {
+const BUILTIN_PREFIX = "builtin:";
+
+/** Agents that run inside this server, by the name after `builtin:` in a bot's URL. */
+export type BuiltinAgents = Record<string, (context: { user: User }) => AbstractAgent>;
+
+export interface ThreadRouteOptions {
+  agentFetch?: HttpAgentFetchFn;
+  builtinAgents?: BuiltinAgents;
+}
+
+export function threadRoutes(db: Database, { agentFetch, builtinAgents = {} }: ThreadRouteOptions) {
+  function agentFor(bot: Bot, user: User): AbstractAgent | null {
+    if (!bot.url.startsWith(BUILTIN_PREFIX)) return new HttpAgent({ url: bot.url, fetch: agentFetch });
+    return builtinAgents[bot.url.slice(BUILTIN_PREFIX.length)]?.({ user }) ?? null;
+  }
+
   const threads = createThreadStore(db);
   const bots = createBotStore(db);
   const app = new Hono<{ Variables: { user: User } }>();
@@ -38,6 +53,8 @@ export function threadRoutes(db: Database, { agentFetch }: { agentFetch?: HttpAg
     if (!thread) return c.json({ error: "Not found" }, 404);
     const bot = await bots.get(thread.botId);
     if (!bot) return c.json({ error: `Bot ${thread.botId} is no longer registered` }, 409);
+    const agent = agentFor(bot, c.var.user);
+    if (!agent) return c.json({ error: `Bot ${bot.id} is not available on this server` }, 409);
 
     const runId = crypto.randomUUID();
     let release: () => Promise<void>;
@@ -50,7 +67,7 @@ export function threadRoutes(db: Database, { agentFetch }: { agentFetch?: HttpAg
 
     try {
       await threads.append(thread.id, [{ id: body.data.message.id, role: "user", content: body.data.message.content }]);
-      const stream = await relayTurn({ threads, bot, threadId: thread.id, runId, release, agentFetch });
+      const stream = await relayTurn({ threads, agent, threadId: thread.id, runId, release });
       return new Response(stream, { headers: { "content-type": "text/event-stream", "cache-control": "no-cache" } });
     } catch (error) {
       await release();
