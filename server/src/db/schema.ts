@@ -74,3 +74,29 @@ export const memories = pgTable(
     index("memories_search_idx").using("gin", table.search),
   ],
 );
+
+/** Allow/deny rules for the built-in assistant's tools; `*` matches every tool and deny wins. */
+export const toolRules = pgTable("tool_rules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tool: text("tool").notNull(),
+  effect: text("effect", { enum: ["allow", "deny"] }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** One row per tool call, written with the gateway's decision before the tool acts. */
+export const toolAudit = pgTable(
+  "tool_audit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    threadId: text("thread_id").notNull(),
+    runId: text("run_id").notNull(),
+    tool: text("tool").notNull(),
+    input: jsonb("input").notNull(),
+    decision: text("decision", { enum: ["allow", "deny"] }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("tool_audit_user_created_idx").on(table.userId, table.createdAt)],
+);

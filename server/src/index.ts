@@ -8,6 +8,7 @@ import { createBotStore } from "./bots/store.ts";
 import { loadConfig } from "./config.ts";
 import { connectDatabase } from "./db/index.ts";
 import { createMemoryStore } from "./memory/store.ts";
+import { createToolGateway } from "./tool-gateway/gateway.ts";
 
 const config = loadConfig(process.env);
 const { db } = await connectDatabase(config.databaseUrl);
@@ -17,12 +18,14 @@ const { db } = await connectDatabase(config.databaseUrl);
 const anthropic = new Anthropic();
 await createBotStore(db).ensure({ id: "assistant", name: "Asistente", url: "builtin:assistant" });
 const memories = createMemoryStore(db);
+const toolGateway = createToolGateway(db);
 const builtinAgents: BuiltinAgents = {
   assistant: ({ user }) =>
     createAssistant({
       client: anthropic,
       model: config.assistantModel,
       tools: memoryTools(memories, user.id),
+      authorize: (call) => toolGateway.authorize({ ...call, userId: user.id }),
       context: async () => {
         const facts = await memories.list(user.id, 50);
         return facts.length ? `What you know about this person:\n${facts.map((fact) => `- ${fact.content}`).join("\n")}` : "";
