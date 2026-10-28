@@ -1,4 +1,5 @@
 import type { Message } from "@ag-ui/core";
+import { z } from "zod";
 import { and, asc, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import type { Database } from "../db/index.ts";
 import { messages, threads } from "../db/schema.ts";
@@ -37,6 +38,7 @@ export function createThreadStore(db: Database, { lockTimeoutMs = 10 * 60_000, n
 
     /** The thread only when it belongs to ownerId; anyone else gets null, as if it did not exist. */
     async get(ownerId: string, threadId: string): Promise<Thread | null> {
+      if (!z.uuid().safeParse(threadId).success) return null;
       const [thread] = await db
         .select()
         .from(threads)

@@ -55,6 +55,12 @@ describe("threads API", () => {
     expect(theirs).toEqual([]);
   });
 
+  it("answers 404, not a database error, for an id that is not a UUID", async () => {
+    const { app } = appFor(ana);
+    expect((await app.request("/api/threads/not-a-uuid/messages")).status).toBe(404);
+    expect((await run(app, "not-a-uuid", "u1", "Hola")).status).toBe(404);
+  });
+
   it("refuses a thread with a bot that is not registered", async () => {
     const { app } = appFor(ana);
     const response = await app.request("/api/threads", {
