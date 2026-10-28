@@ -63,8 +63,8 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 | ID | Specs | Ruta | Estado | Commit |
 | --- | --- | --- | --- | --- |
 | T1 | S1, S7 | inline | [x] Andamiaje: workspaces, TS, Vitest, Docker Compose de Postgres, esquema Drizzle + migraciones, config que solo exige `DATABASE_URL` | 415b90e |
-| T2 | S2 | inline | [x] Store de hilos/mensajes con aislamiento por usuario y bloqueo por hilo | ver L6 |
-| T3 | S4, S2 | inline | [ ] Relay AG-UI: `POST /api/threads/:id/runs` → bot por URL, SSE al navegador, persistencia | |
+| T2 | S2 | inline | [x] Store de hilos/mensajes con aislamiento por usuario y bloqueo por hilo | 5b2cf20 |
+| T3 | S4, S2 | inline | [x] Relay AG-UI: `POST /api/threads/:id/runs` → bot por URL, SSE al navegador, persistencia | ver L7 |
 | T4 | S4 | inline | [ ] Bot integrado AG-UI con modelo configurable | |
 | T5 | S3 | inline | [ ] Memoria: store, herramientas `remember`/`recall`, inyección en contexto | |
 | T6 | S6 | inline | [ ] Gateway de herramientas: política + auditoría | |
@@ -86,3 +86,5 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 **L5** T1: RED observado (`tests/config.test.ts` y `tests/health.test.ts` fallaban porque faltaban los módulos). GREEN: `npx vitest run` → 2 archivos y 4 tests pasan; `npx tsc --noEmit` → exit 0; `grep -rli copilotkit` fuera de `odd/` → sin coincidencias. Node 26 ejecuta TS directamente (sin `tsx`). Pendiente de S7: `docker compose up` no se ha verificado porque Docker no está instalado.
 
 **L6** T2: RED observado (faltaba `src/threads/store.ts`). Primer GREEN con un fallo real: el orden de `list` empataba porque PGlite solo tiene precisión de milisegundos (comprobado: `now()` repite `22:27:24.594`). Solución: el store usa un único reloj inyectable para `created_at`/`updated_at`, y el test le pasa un reloj que avanza. `npx vitest run` → 10/10 tests en 3 ejecuciones seguidas; `tsc` → exit 0. Specs cubiertas: S2 (persistencia tras una nueva instancia, upsert por id, aislamiento entre usuarios, un solo run por hilo y recuperación de bloqueos abandonados).
+
+**L7** T3: RED observado (faltaba `src/bots/store.ts`). GREEN: 18/18 tests y `tsc` exit 0. El relay usa el `HttpAgent` real de `@ag-ui/client` contra un bot AG-UI falso hecho con Hono (`tests/helpers/fake-bot.ts`), así que se ejercita el parseo SSE real. Cubre: 401 sin identidad, aislamiento (404), 409 con el hilo ocupado, historial enviado desde nuestro Postgres, RUN_ERROR ante un bot que falla (el mensaje del usuario se conserva y el hilo se libera). Seguridad: `@ag-ui/*` fija zod 3.25.76 (GHSA-mrhx-c7xc-m3w5, severidad alta, sin parche en 3.x); override de npm a `zod ^4.6.7` → `npm audit --omit=dev` = 0 vulnerabilidades tras una instalación limpia, y los tests siguen en verde. Hasta T7 `index.ts` usa un `identify` que no admite a nadie.
