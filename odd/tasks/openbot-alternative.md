@@ -8,7 +8,7 @@ comercial es obligatorio para arrancar.
 - Stack: TypeScript sobre Node 26, npm workspaces, Hono, Drizzle + PostgreSQL (Docker Compose), React + Vite, Vitest.
   Los tests usan PGlite (Postgres en proceso) con el mismo esquema y las mismas migraciones.
 - Branch: `leviathan-name-meaning`, worktree `leviathan`.
-- Engram mirror `odd/openbot-alternative/tasks`: **pendiente** (Engram no está instalado en esta máquina).
+- Engram mirror: topic `odd/openbot-alternative/tasks`, proyecto `personalBot`.
 
 ## Specs
 
@@ -66,7 +66,7 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 | T2 | S2 | inline | [x] Store de hilos/mensajes con aislamiento por usuario y bloqueo por hilo | 5b2cf20 |
 | T3 | S4, S2 | inline | [x] Relay AG-UI: `POST /api/threads/:id/runs` → bot por URL, SSE al navegador, persistencia | 5fcf544 |
 | T4 | S4 | inline | [x] Bot integrado AG-UI con modelo configurable | eb2b7e1 |
-| T5 | S3 | inline | [x] Memoria: store, herramientas `remember`/`recall`, inyección en contexto | ver L9 |
+| T5 | S3 | inline | [x] Memoria: store, herramientas `remember`/`recall`, inyección en contexto | ffca3fc |
 | T6 | S6 | inline | [ ] Gateway de herramientas: política + auditoría | |
 | T7 | S5 | inline | [ ] Autenticación OIDC, roles, modo usuario único solo en desarrollo | |
 | T8 | S2, S4 | inline | [ ] App web: lista de hilos, chat con streaming, memorias | |
@@ -92,3 +92,5 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 **L8** T4: RED observado (faltaba `src/assistant/agent.ts`, y el test de `ASSISTANT_MODEL` fallaba). GREEN: 23/23 tests y `tsc` exit 0. El asistente es un `AbstractAgent` de AG-UI que se ejecuta en el propio servidor (URL `builtin:assistant`), para no exponer la clave del modelo detrás de una URL pública. Usa `@anthropic-ai/sdk` 1.3.0 con `claude-opus-5-5` por defecto (configurable con `ASSISTANT_MODEL`), streaming, `effort: medium` y `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`). Una negativa del modelo (`refusal`) se informa como RUN_ERROR. Los tests reproducen el stream SSE real de la Messages API con un `fetch` inyectado. `new Anthropic()` sin credenciales se construye sin error (comprobado), así que S1 se mantiene: el servidor arranca sin clave. rxjs fijado a 7.8.1 (la versión exacta que exige `@ag-ui/client`) para tener una sola copia.
 
 **L9** T5: RED observado (faltaban `src/memory/store.ts` y `src/assistant/memory-tools.ts`; `/api/memories` daba 404). GREEN: 33/33 tests y `tsc` exit 0. Memoria por persona en Postgres, con búsqueda full-text `to_tsvector('simple', …)` (sin stemming dependiente del idioma) e índice GIN. Rutas `GET/POST/DELETE /api/memories` aisladas por usuario. El asistente tiene un bucle de herramientas manual (máximo 10 llamadas al modelo por run) con `eager_input_streaming` y validación zod de cada entrada; una entrada inválida devuelve un `tool_result` con `is_error` y la herramienta no se ejecuta. Las llamadas a herramientas se emiten como eventos TOOL_CALL_* de AG-UI y se guardan en el hilo; en el siguiente run se reconstruyen como `tool_use`/`tool_result`. El prompt de sistema (base + hechos) se calcula una vez por run y no cambia dentro de él (regla de preserved thinking de Opus 5.5: reconstruirlo invalida el thinking anterior). Durante la sesión apareció un fallo aparte: un `:id` que no es UUID daba 500. Se corrigió con su test en el commit 63671d6.
+
+**L10** Pausa en un punto estable: el usuario sale del agente para recargar la configuración (acaba de instalar gentle-ai y Engram). T1–T5 están completas y con commit; árbol limpio; 33/33 tests; `tsc` exit 0; `npm audit --omit=dev` = 0. **Siguiente: T6** (gateway de herramientas con política y auditoría), que debe envolver `runTool` en `server/src/assistant/agent.ts`. Sigue pendiente de S7 verificar `docker compose up` (Docker no estaba instalado). Para retomar: leer este documento hasta `## Log` y ejecutar `cd server && npx vitest run`.
