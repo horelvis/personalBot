@@ -20,11 +20,17 @@ export async function signInAccount(db: Database, identity: OidcIdentity, access
 
   // ADMIN_EMAILS is the source of truth for the role, so removing someone from it demotes them on their next sign-in.
   const profile = { email, name: identity.name ?? null, role: access.adminEmails.includes(email) ? ("admin" as const) : ("member" as const) };
-  const sameIdentity = and(eq(users.oidcIssuer, identity.issuer), eq(users.oidcSubject, identity.subject));
-  const [known] = await db.update(users).set(profile).where(sameIdentity).returning();
-  if (known) return known;
-
   const [sameEmail] = await db.select().from(users).where(eq(users.email, email));
+  const ownsEmail = sameEmail?.oidcIssuer === identity.issuer && sameEmail.oidcSubject === identity.subject;
+  const sameIdentity = and(eq(users.oidcIssuer, identity.issuer), eq(users.oidcSubject, identity.subject));
+  const [known] = await db.select({ id: users.id }).from(users).where(sameIdentity);
+  if (known) {
+    // Their email moved at the provider to one another account already has: refuse rather than merge.
+    if (sameEmail && !ownsEmail) return null;
+    const [updated] = await db.update(users).set(profile).where(eq(users.id, known.id)).returning();
+    return updated ?? null;
+  }
+
   if (sameEmail) {
     // An account created before sign-in existed is linked once; one owned by another identity is never taken over.
     if (sameEmail.oidcSubject !== null) return null;

@@ -140,5 +140,27 @@ describe("OIDC sign-in", () => {
     down = false;
     expect((await app.request("/auth/login")).status).toBe(302);
   });
+
+  it("refuses, without an error page, an email change that collides with another account", async () => {
+    const app = appWith();
+    await signIn(app, { sub: "u-1", email: "ana@example.com" });
+    await signIn(app, { sub: "u-2", email: "luis@example.com" });
+    const callback = await signIn(app, { sub: "u-2", email: "ana@example.com" });
+    expect(callback.status).toBe(403);
+    expect((await db.select().from(users).where(eq(users.oidcSubject, "u-2")))[0]?.email).toBe("luis@example.com");
+  });
+
+  it("refuses a code redeemed without the PKCE verifier of its login", async () => {
+    const app = appWith();
+    const login = await app.request("/auth/login");
+    const other = await app.request("/auth/login");
+    const authorizationUrl = new URL(login.headers.get("location") ?? "");
+    const callback = new URL("http://localhost:3001/auth/callback");
+    callback.searchParams.set("code", idp.issueCode(authorizationUrl, { sub: "u-1", email: "ana@example.com" }));
+    callback.searchParams.set("state", new URL(other.headers.get("location") ?? "").searchParams.get("state") ?? "");
+    const response = await app.request(callback.pathname + callback.search, { headers: { cookie: cookiesFrom(other) } });
+    expect(response.status).toBe(400);
+    expect(await db.select().from(sessions)).toEqual([]);
+  });
 });
 
