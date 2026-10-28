@@ -109,3 +109,17 @@ export const toolAudit = pgTable(
     check("tool_audit_decision_check", sql`${table.decision} in ('allow', 'deny')`),
   ],
 );
+
+/** Signed-in browsers. Only a SHA-256 of the cookie token is stored, so a database leak cannot be replayed. */
+export const sessions = pgTable(
+  "sessions",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("sessions_user_idx").on(table.userId)],
+);

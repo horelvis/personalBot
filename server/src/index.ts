@@ -1,6 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
+import { authRoutes } from "./auth/routes.ts";
+import { createSessionStore, sessionIdentify } from "./auth/sessions.ts";
+import { singleUserIdentify } from "./auth/single-user.ts";
 import type { BuiltinAgents } from "./threads/routes.ts";
 import { createAssistant } from "./assistant/agent.ts";
 import { memoryTools } from "./assistant/memory-tools.ts";
@@ -33,8 +36,10 @@ const builtinAgents: BuiltinAgents = {
     }),
 };
 
-// Sign-in arrives with T7; until then the API admits nobody rather than everybody.
-const identify = async () => null;
-serve({ fetch: createApp({ db, identify, builtinAgents }).fetch, port: config.port }, ({ port }) => {
+const sessions = createSessionStore(db);
+const identify = config.singleUser ? singleUserIdentify(db) : sessionIdentify(sessions);
+if (config.singleUser) console.warn("SINGLE_USER=true: every request is the local admin. Development only.");
+const auth = authRoutes({ sessions, secureCookies: config.production });
+serve({ fetch: createApp({ db, identify, builtinAgents, auth }).fetch, port: config.port }, ({ port }) => {
   console.log(`personalBot server listening on http://localhost:${port}`);
 });
