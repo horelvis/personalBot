@@ -196,3 +196,5 @@ Avisos que quedan:
 - `ADMIN_EMAILS` y `OIDC_ALLOWED_DOMAINS` se ignoran sin avisar;
 - si la cuenta del owner ya estaba enlazada a otro `sub`, el owner recibe 403 (es la regla anti-takeover; se recupera editando la base);
 - `SINGLE_USER` tiene prioridad sobre OIDC (solo en desarrollo).
+
+**L25** Revisión RDD de T10 (lentes risk y reliability): aprobada, con acknowledgement hecho. Un solo aviso, que ya constaba en L24: `ADMIN_EMAILS` y `OIDC_ALLOWED_DOMAINS` se ignoran sin avisar. T10 queda cerrada. Siguiente: abrir la cadena de PRs (falta que el usuario elija la estrategia).
