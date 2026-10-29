@@ -3,6 +3,8 @@ export interface Config {
   port: number;
   /** The Claude model behind the built-in assistant. */
   assistantModel: string;
+  /** False when ANTHROPIC_BASE_URL points the SDK at a gateway, which does not know Anthropic-only betas. */
+  serverSideFallbacks: boolean;
   /** Development only: every request is one local person, with no sign-in. */
   singleUser: boolean;
   production: boolean;
@@ -43,6 +45,7 @@ export function loadConfig(environment: Environment): Config {
     databaseUrl,
     port: environment.PORT ? Number(environment.PORT) : 3001,
     assistantModel: environment.ASSISTANT_MODEL?.trim() || "claude-opus-5-5",
+    serverSideFallbacks: !environment.ANTHROPIC_BASE_URL?.trim(),
     singleUser,
     production,
     oidc: loadOidcConfig(environment),

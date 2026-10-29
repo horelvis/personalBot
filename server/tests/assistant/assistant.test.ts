@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app.ts";
-import { createAssistant } from "../../src/assistant/agent.ts";
+import { type AssistantOptions, createAssistant } from "../../src/assistant/agent.ts";
 import { createBotStore } from "../../src/bots/store.ts";
 import type { Database } from "../../src/db/index.ts";
 import { createTestDatabase } from "../helpers/database.ts";
@@ -16,12 +16,12 @@ beforeEach(async () => {
   await createBotStore(db).ensure({ id: "assistant", name: "Asistente", url: "builtin:assistant" });
 });
 
-async function converse(turns: Parameters<typeof createFakeAnthropic>[0], said: string[]) {
+async function converse(turns: Parameters<typeof createFakeAnthropic>[0], said: string[], options: Partial<AssistantOptions> = {}) {
   const anthropic = createFakeAnthropic(turns);
   const app = createApp({
     db,
     identify: async () => ana,
-    builtinAgents: { assistant: () => createAssistant({ client: anthropic.client, model: "claude-opus-5-5" }) },
+    builtinAgents: { assistant: () => createAssistant({ client: anthropic.client, model: "claude-opus-5-5", ...options }) },
   });
   const created = await app.request("/api/threads", {
     method: "POST",
@@ -52,6 +52,15 @@ describe("built-in assistant", () => {
     expect(streams[0]).toContain('"type":"RUN_FINISHED"');
     expect(history).toHaveLength(2);
     expect(history[1]).toMatchObject({ role: "assistant", content: "Hola, Ana." });
+  });
+
+  it("leaves out Anthropic's server-side fallbacks for a gateway such as OpenRouter or DeepSeek", async () => {
+    const { requests, streams, history } = await converse([{ text: "Hola." }], ["Hola"], { serverSideFallbacks: false });
+
+    expect(requests[0]?.body).not.toHaveProperty("fallbacks");
+    expect(requests[0]?.headers.get("anthropic-beta") ?? "").not.toContain("server-side-fallback");
+    expect(streams[0]).toContain('"type":"RUN_FINISHED"');
+    expect(history[1]).toMatchObject({ role: "assistant", content: "Hola." });
   });
 
   it("asks Claude with the configured model, refusal fallbacks and the whole thread", async () => {

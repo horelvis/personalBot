@@ -52,7 +52,9 @@ Every setting is an environment variable; `.env.example` lists them all.
 | `DATABASE_URL` | yes | PostgreSQL connection string. |
 | `PORT` | no | Defaults to `3001`. |
 | `ANTHROPIC_API_KEY` | for the built-in assistant | Without it, the assistant answers each run with an error. Everything else keeps working. |
-| `ASSISTANT_MODEL` | no | Defaults to `claude-opus-5-5`. |
+| `ASSISTANT_MODEL` | no | Defaults to `claude-opus-5-5`. With a gateway, use its model name, such as `deepseek/deepseek-v4.1-flash` on OpenRouter. |
+| `ANTHROPIC_BASE_URL` | no | Sends the assistant through a gateway that speaks the Anthropic Messages API, such as OpenRouter (`https://openrouter.ai/api`) or DeepSeek (`https://api.deepseek.com/anthropic`). Anthropic-only features (server-side fallbacks) are then left out. |
+| `ANTHROPIC_AUTH_TOKEN` | with OpenRouter | The gateway key, sent as a bearer token. Leave `ANTHROPIC_API_KEY` empty. |
 | `SINGLE_USER` | no | `true` signs every request in as one local person. Refused unless `NODE_ENV=development`. |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | for sign-in | Your OpenID provider. The secret is optional for public clients. |
 | `PUBLIC_URL` | with OIDC | The address people open. Register `<PUBLIC_URL>/auth/callback` as the redirect URI. |

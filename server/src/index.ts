@@ -28,6 +28,7 @@ const builtinAgents: BuiltinAgents = {
     createAssistant({
       client: anthropic,
       model: config.assistantModel,
+      serverSideFallbacks: config.serverSideFallbacks,
       tools: memoryTools(memories, user.id),
       authorize: (call) => toolGateway.authorize({ ...call, userId: user.id }),
       context: async () => {
