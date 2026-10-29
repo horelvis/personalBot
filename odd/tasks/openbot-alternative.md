@@ -175,3 +175,10 @@ Todas las tareas T1–T9 están completas. Pendiente del usuario: push y PR.
 - Un dato insertado sobrevive a `docker compose restart`.
 
 El stack de prueba (proyecto `personalbot-s7`) se desmontó con su volumen.
+
+**L21** Idea aplazada por el usuario («vamos a dejarlo por ahora»): ejecutar Python para analizar datos. Opciones evaluadas:
+1. La herramienta de ejecución de código de Anthropic (`code_execution_20260521`): no hay que montar nada y los ficheros llegan por la Files API, pero solo sirve para el asistente integrado y los datos se procesan en Anthropic.
+2. Docker Sandboxes: la API y el SDK solo cubren los sandboxes en la nube, que son de pago; la versión local es gratis pero está pensada para la CLI de agentes (`sbx run`). Es la que peor encaja.
+3. Un sandbox propio con Docker Engine: un contenedor efímero por ejecución, sin red, con el sistema de archivos de solo lectura, límites de CPU, memoria y tiempo, y gVisor como opción. Es la más coherente con S1, pero exige proteger el acceso del servidor al Docker del host.
+
+Recomendación: un puerto `CodeSandbox` con el adaptador 3 por defecto y el 1 como opcional, ambos detrás del gateway de T6 (política + auditoría). Sin implementar.
