@@ -46,7 +46,11 @@ Respuesta del usuario: «Equipo/empresa».
   - La identidad es `issuer + sub` del ID token; el email solo se usa para mostrar y para las listas de acceso.
   - Por defecto no entra nadie: `OIDC_ALLOWED_DOMAINS` lista los dominios de email admitidos (`*` admite cualquier identidad del issuer). Así, un issuer público como Google no abre el servidor a cualquier cuenta.
   - `ADMIN_EMAILS` define quién es `admin` al iniciar sesión; el resto es `member`. Un email de `ADMIN_EMAILS` puede entrar aunque su dominio no esté en `OIDC_ALLOWED_DOMAINS`.
-  - Solo se rechaza `email_verified: false`. Si el claim falta, el email se da por bueno, porque proveedores como Microsoft Entra no lo envían.
+  - Solo entra un email con `email_verified: true`. Para proveedores que no envían el claim (Microsoft Entra), `OIDC_TRUST_UNVERIFIED_EMAIL=true` lo acepta. Decisión del usuario en L15.
+  - El rol se recalcula en cada petición a partir de `ADMIN_EMAILS`, así que quien sale de la lista pierde el rol de admin al momento, aunque tenga una sesión abierta.
+  - `SINGLE_USER=true` exige `NODE_ENV=development` explícito; con cualquier otro valor, o sin `NODE_ENV`, el servidor no arranca.
+  - Si el proveedor falla durante la callback, se responde 502; un error de protocolo (state, code o nonce) sigue dando 400.
+  - Riesgo aceptado: `POST /api/bots` admite cualquier URL http(s), también de red privada o loopback. Solo los admins pueden registrar bots.
   - Una cuenta creada antes del login (sin identidad OIDC) se enlaza una sola vez a la primera identidad que llega con su email. Una cuenta que ya tiene identidad nunca se reasigna, y un cambio de email que choca con otra cuenta se rechaza con 403.
   - Las sesiones viven en Postgres (cookie opaca `HttpOnly`, `SameSite=Lax` y `Secure` en producción; en la base solo se guarda el hash del token), así que se pueden revocar y no hace falta un secreto de firma.
   - Autorización por rol: `GET /api/bots` para cualquier miembro y `POST /api/bots` (registrar un bot AG-UI por URL) solo para `admin`.
@@ -77,7 +81,7 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 | T5 | S3 | inline | [x] Memoria: store, herramientas `remember`/`recall`, inyección en contexto | ffca3fc |
 | T6 | S6 | inline | [x] Gateway de herramientas: política + auditoría | 11a3e05 |
 | T7 | S5 | inline | [x] Autenticación OIDC, roles, modo usuario único solo en desarrollo. Commits: (a) sesiones + `SINGLE_USER`, (b) OIDC, (c) roles + `/api/bots`, arreglo de colisión de email | 71fbca3, 3de4e13, 8d13cf6, 50bc212 |
-| T8 | S2, S4 | inline | [ ] App web: lista de hilos, chat con streaming, memorias | |
+| T8 | S2, S4 | delegada (motivo: límite de contexto de la sesión padre) | [ ] App web: lista de hilos, chat con streaming, memorias | |
 | T9 | S7, S8 | inline | [ ] Dockerfile + compose completo, README honesto, LICENSE MIT | |
 
 ## Log
@@ -108,3 +112,36 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 **L12** Arreglos tras T6: `98e9d6b` añade CHECK en Postgres a `tool_rules.effect` y `tool_audit.decision`, y deja `tool_audit.input` nullable. RED 3/3 → GREEN 41/41. RDD: `medium`, `under_budget` (queda pendiente en el tramo). El usuario pidió seguir en modo autónomo hasta que haga falta su intervención. T7: no hay ningún writer delegado (falta un motivo según el Writer trigger); se hace inline en tres commits. Risk: item 2 (auth) y 5 (dependencia nueva `openid-client` 6.8.8, de panva, con `jose` y `oauth4webapi`), así que habrá verificador independiente. Diseño hexagonal: un puerto `OidcProvider` con un adaptador sobre `openid-client` y un IdP falso en los tests. Supuestos de S5 anotados arriba.
 
 **L13** T7: RED observado en cada unidad (faltaban los módulos; un test de 502 y otro de colisión de email fallaron antes de su arreglo). GREEN: 66/66 tests, `tsc` exit 0, `npm audit --omit=dev` = 0. Sesiones en Postgres con hash SHA-256 del token y cookie `HttpOnly`, `SameSite=Lax` y `Secure` en producción. `SINGLE_USER=true` se rechaza con `NODE_ENV=production`. OIDC con `openid-client` (PKCE S256, state y nonce en una cookie `HttpOnly` de 10 minutos con path `/auth`); el proveedor caído devuelve 502. La callback se reconstruye sobre `redirectUri`. Los tests usan un IdP falso con `jose` que firma RS256 y comprueba PKCE. `POST /api/bots` es solo para admin y solo acepta URLs http(s); `GET /api/bots` oculta la URL a los miembros. Risk: item 2 (auth) y 5 (dependencia nueva). Verificador independiente: S5 y S1 pass, sin blockers. De sus avisos se arregló la colisión de email (devolvía 500); el resto quedó documentado como supuestos en S5. Queda pendiente: borrar las sesiones caducadas (las filas no se eliminan); `NODE_ENV` se compara exactamente con `production`. Sin servidor real de Postgres (no hay Docker) no se probó el arranque de punta a punta. **Siguiente:** revisión RDD del tramo `11a3e05..HEAD`, y después T8.
+
+**L14** Revisión RDD del tramo `11a3e05..cafc5f7` (lentes risk, resilience y reliability): aprobada, con acknowledgement hecho, y 16 avisos no bloqueantes. Arreglados en `ee2db8a` con RED → GREEN (73/73 tests, `tsc` exit 0):
+- el modo de usuario único ya no deja en caché un fallo de la base;
+- el insert de cuenta no falla ante el conflicto, por si dos primeros inicios de sesión llegan a la vez;
+- el email se busca con `lower()`;
+- `PUBLIC_URL` se valida, se respeta su prefijo de ruta y la cookie de login usa la ruta de la callback;
+- `OIDC_ALLOWED_DOMAINS` no puede quedar vacío;
+- las sesiones caducadas de la persona se borran al crear una nueva;
+- tests nuevos de enlace de cuenta previa, de admin fuera de los dominios admitidos y de degradación.
+
+Pendiente de decisión del usuario:
+- (a) aceptar un email sin el claim `email_verified` (riesgo de la clase nOAuth frente a la compatibilidad con Entra);
+- (b) un admin retirado de `ADMIN_EMAILS` conserva el rol hasta que vuelve a iniciar sesión (las sesiones duran 30 días);
+- (c) `SINGLE_USER` solo se rechaza si `NODE_ENV` es exactamente `production`;
+- (d) un fallo de red en la callback responde 400 en vez de 5xx;
+- (e) `POST /api/bots` admite URLs de red privada o loopback (SSRF limitado a admins).
+
+**L15** Decisión del usuario sobre los puntos (a) a (e) de L14: «Aplicar las 5 (Recomendado)». Implementado en `8bb0c2a` con RED (6 tests) → GREEN (77/77), `tsc` exit 0:
+- (a) se exige `email_verified: true`, salvo con `OIDC_TRUST_UNVERIFIED_EMAIL=true`;
+- (b) el rol se recalcula en cada petición;
+- (c) `SINGLE_USER` necesita `NODE_ENV=development`. Esto endurece lo que pedía S5 («se niega a arrancar si `NODE_ENV=production`»): ahora también se niega con cualquier otro valor;
+- (d) se responde 502 cuando el proveedor falla en la callback. Un `TypeError` de red se distingue de los errores OAuth de openid-client;
+- (e) se acepta como riesgo y queda documentado en S5.
+
+**L16** Revisión RDD de `e161ebd..fb50b0c`: aprobada, con acknowledgement hecho. Su aviso principal era que un proveedor caído que responde con un 5xx en HTML o con `server_error`/`temporarily_unavailable` seguía dando 400. Arreglado en `94fb30f`: RED 3/3 → GREEN 81/81; un `code` rechazado por el proveedor sigue dando 400.
+
+**L17** Revisión RDD del arreglo de caídas: aprobada, con acknowledgement hecho. Avisos menores que quedan como seguimiento:
+- falta un test de `error=server_error` en la propia redirección de la callback;
+- falta un test de un 400 con `server_error`;
+- `OAUTH_RESPONSE_IS_NOT_CONFORM` también convierte en 502 un 200 que no es conforme;
+- los tests de caída no comprueban que no se crea sesión.
+
+T7 queda cerrada. **Siguiente: T8** (app web).

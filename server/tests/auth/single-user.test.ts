@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/app.ts";
 import { singleUserIdentify } from "../../src/auth/single-user.ts";
 import type { Database } from "../../src/db/index.ts";
@@ -17,4 +17,14 @@ describe("single-user development mode", () => {
     expect(first).toMatchObject({ email: "local@localhost", role: "admin" });
     expect(second).toEqual(first);
   });
+
+  it("recovers when the database was not ready on the first request", async () => {
+    vi.spyOn(db, "insert").mockImplementationOnce(() => {
+      throw new Error("connection refused");
+    });
+    const app = createApp({ db, identify: singleUserIdentify(db) });
+    expect((await app.request("/api/me")).status).toBe(500);
+    expect(await (await app.request("/api/me")).json()).toMatchObject({ email: "local@localhost" });
+  });
 });
+

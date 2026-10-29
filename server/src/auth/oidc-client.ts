@@ -1,5 +1,5 @@
 import * as client from "openid-client";
-import type { OidcIdentity, OidcProvider, PendingLogin } from "./oidc.ts";
+import { type OidcIdentity, type OidcProvider, type PendingLogin, ProviderUnavailableError } from "./oidc.ts";
 
 export interface OpenIdSettings {
   issuer: string;
@@ -35,12 +35,17 @@ export function createOpenIdProvider(settings: OpenIdSettings, { fetch }: { fetc
     },
 
     async finish(callbackUrl, pending) {
-      const tokens = await client.authorizationCodeGrant(await configure(), callbackUrl, {
-        pkceCodeVerifier: pending.codeVerifier,
-        expectedState: pending.state,
-        expectedNonce: pending.nonce,
-        idTokenExpected: true,
-      });
+      let tokens;
+      try {
+        tokens = await client.authorizationCodeGrant(await configure(), callbackUrl, {
+          pkceCodeVerifier: pending.codeVerifier,
+          expectedState: pending.state,
+          expectedNonce: pending.nonce,
+          idTokenExpected: true,
+        });
+      } catch (error) {
+        throw isProtocolError(error) ? error : new ProviderUnavailableError(error);
+      }
       const claims = tokens.claims();
       if (!claims) throw new Error("The provider returned no ID token.");
       const identity: OidcIdentity = { issuer: claims.iss, subject: claims.sub };
@@ -63,4 +68,16 @@ async function discover(settings: OpenIdSettings, fetch: client.CustomFetch | un
   );
   if (fetch) config[client.customFetch] = fetch;
   return config;
+}
+
+// An answer that is not an OAuth response at all, such as a proxy's HTML error page.
+const UNREADABLE_RESPONSE = new Set(["OAUTH_RESPONSE_IS_NOT_JSON", "OAUTH_RESPONSE_IS_NOT_CONFORM"]);
+const PROVIDER_FAULTS = new Set(["server_error", "temporarily_unavailable"]);
+
+/** Errors about the response itself (forged state, bad code, wrong nonce) as opposed to the provider being down. */
+function isProtocolError(error: unknown): boolean {
+  if (error instanceof client.ResponseBodyError) return error.status < 500 && !PROVIDER_FAULTS.has(error.error);
+  if (error instanceof client.AuthorizationResponseError) return !PROVIDER_FAULTS.has(error.error);
+  if (error instanceof client.WWWAuthenticateChallengeError) return true;
+  return error instanceof client.ClientError && Boolean(error.code?.startsWith("OAUTH_")) && !UNREADABLE_RESPONSE.has(error.code ?? "");
 }

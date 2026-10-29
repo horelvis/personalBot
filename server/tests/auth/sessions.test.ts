@@ -59,4 +59,14 @@ describe("sessions", () => {
     expect(response.headers.get("set-cookie")).toMatch(new RegExp(`${SESSION_COOKIE}=;.*Max-Age=0`));
     expect((await app.request("/api/me", withCookie(token))).status).toBe(401);
   });
+
+  it("deletes a person's expired sessions when they open a new one", async () => {
+    let now = new Date("2026-10-01T00:00:00Z");
+    const store = createSessionStore(db, { now: () => now, ttlMs: 60_000 });
+    await store.create(ana.id);
+    now = new Date("2026-10-01T00:02:00Z");
+    await store.create(ana.id);
+    expect(await db.select().from(sessions)).toHaveLength(1);
+  });
 });
+

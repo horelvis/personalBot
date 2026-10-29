@@ -29,9 +29,18 @@ describe("loadConfig", () => {
     );
   });
 
-  it("enables single-user mode outside production only when SINGLE_USER=true", () => {
-    expect(loadConfig({ DATABASE_URL: "postgres://x@localhost/x", SINGLE_USER: "true" }).singleUser).toBe(true);
-    expect(loadConfig({ DATABASE_URL: "postgres://x@localhost/x" }).singleUser).toBe(false);
+  it("enables single-user mode only with SINGLE_USER=true and an explicit NODE_ENV=development", () => {
+    const base = { DATABASE_URL: "postgres://x@localhost/x" };
+    expect(loadConfig({ ...base, SINGLE_USER: "true", NODE_ENV: "development" }).singleUser).toBe(true);
+    expect(loadConfig(base).singleUser).toBe(false);
+    expect(() => loadConfig({ ...base, SINGLE_USER: "true" })).toThrow(/NODE_ENV=development/);
+    expect(() => loadConfig({ ...base, SINGLE_USER: "true", NODE_ENV: "prod" })).toThrow(/NODE_ENV=development/);
+  });
+
+  it("trusts unverified emails only when OIDC_TRUST_UNVERIFIED_EMAIL=true", () => {
+    const oidc = { DATABASE_URL: "postgres://x@localhost/x", OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", PUBLIC_URL: "http://l", OIDC_ALLOWED_DOMAINS: "*" };
+    expect(loadConfig(oidc).oidc?.trustUnverifiedEmail).toBe(false);
+    expect(loadConfig({ ...oidc, OIDC_TRUST_UNVERIFIED_EMAIL: "true" }).oidc?.trustUnverifiedEmail).toBe(true);
   });
 
   it("reads OIDC settings and refuses an issuer without the variables it needs", () => {
@@ -59,8 +68,16 @@ describe("loadConfig", () => {
       redirectUri: "https://bot.example.com/auth/callback",
       allowedDomains: ["example.com", "example.org"],
       adminEmails: ["boss@example.com"],
+      trustUnverifiedEmail: false,
     });
     expect(loadConfig({ ...base, OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", PUBLIC_URL: "http://l", OIDC_ALLOWED_DOMAINS: "*" }).oidc?.allowedDomains).toBe("*");
+  });
+
+  it("keeps a path prefix of PUBLIC_URL and rejects malformed sign-in settings with a hint", () => {
+    const oidc = { DATABASE_URL: "postgres://x@localhost/x", OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", OIDC_ALLOWED_DOMAINS: "example.com" };
+    expect(loadConfig({ ...oidc, PUBLIC_URL: "https://example.com/bot" }).oidc?.redirectUri).toBe("https://example.com/bot/auth/callback");
+    expect(() => loadConfig({ ...oidc, PUBLIC_URL: "not a url" })).toThrow(/PUBLIC_URL/);
+    expect(() => loadConfig({ ...oidc, PUBLIC_URL: "https://example.com", OIDC_ALLOWED_DOMAINS: " , ," })).toThrow(/OIDC_ALLOWED_DOMAINS/);
   });
 });
 
