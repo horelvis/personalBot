@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/app.ts";
 import { createOpenIdProvider } from "../../src/auth/oidc-client.ts";
 import { authRoutes } from "../../src/auth/routes.ts";
@@ -16,6 +16,10 @@ let idp: Awaited<ReturnType<typeof createFakeIdp>>;
 beforeEach(async () => {
   db = await createTestDatabase();
   idp = await createFakeIdp();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 function appWith({ ownerEmail = "ana@example.com", trustUnverifiedEmail = false, fetch = idp.fetch } = {}) {
@@ -119,12 +123,25 @@ describe("OIDC sign-in", () => {
     expect(response.status).toBe(400);
   });
 
-  it("does not take over an existing account that already has another identity", async () => {
+  it("re-links the owner's account to a new identity when the provider verifies OWNER_EMAIL, keeping the account", async () => {
     const app = appWith();
-    await signIn(app, { sub: "u-1", email: "ana@example.com" });
+    const before = await (await me(app, await signIn(app, { sub: "u-1", email: "ana@example.com" }))).json();
     const callback = await signIn(app, { sub: "u-9", email: "ana@example.com" });
+    expect(callback.status).toBe(302);
+    expect((await (await me(app, callback)).json()).id).toBe(before.id);
+    const accounts = await db.select().from(users).where(eq(users.email, "ana@example.com"));
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0]?.oidcSubject).toBe("u-9");
+  });
+
+  it("keeps refusing a new identity for OWNER_EMAIL when the provider does not verify the email, and logs why", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const app = appWith({ trustUnverifiedEmail: true });
+    await signIn(app, { sub: "u-1", email: "ana@example.com" });
+    const callback = await signIn(app, { sub: "u-9", email: "ana@example.com", email_verified: undefined });
     expect(callback.status).toBe(403);
-    expect(await db.select().from(users).where(eq(users.email, "ana@example.com"))).toHaveLength(1);
+    expect((await db.select().from(users).where(eq(users.email, "ana@example.com")))[0]?.oidcSubject).toBe("u-1");
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/OWNER_EMAIL is linked to another identity.*not verified/));
   });
 
   it("answers 502 when the provider cannot be reached, and works once it is back", async () => {
@@ -148,9 +165,11 @@ describe("OIDC sign-in", () => {
     await signIn(app, { sub: "u-1", email: "ana@example.com" });
     const asLuis = appWith({ ownerEmail: "luis@example.com" });
     expect((await signIn(asLuis, { sub: "u-2", email: "luis@example.com" })).status).toBe(302);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const callback = await signIn(app, { sub: "u-2", email: "ana@example.com" });
     expect(callback.status).toBe(403);
     expect((await db.select().from(users).where(eq(users.oidcSubject, "u-2")))[0]?.email).toBe("luis@example.com");
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/already belongs to another account/));
   });
 
   it("refuses a code redeemed without the PKCE verifier of its login", async () => {
