@@ -28,7 +28,7 @@ export async function signInAccount(db: Database, identity: OidcIdentity, access
   if (known) {
     // Their email moved at the provider to one another account already has: refuse rather than merge.
     if (sameEmail && !ownsEmail) {
-      console.warn(`Sign-in refused: the provider now gives ${email} to an identity whose account has another email, and ${email} already belongs to another account.`);
+      console.warn("Sign-in refused: the provider moved OWNER_EMAIL to an identity whose account has another email, and OWNER_EMAIL already belongs to another account.");
       return null;
     }
     const [updated] = await db.update(users).set(profile).where(eq(users.id, known.id)).returning();
@@ -40,7 +40,7 @@ export async function signInAccount(db: Database, identity: OidcIdentity, access
     // linked here, and the owner's account follows them to a new identity (another provider, or a recreated
     // account) when the provider vouches for the email. An unverified email never moves the account.
     if (sameEmail.oidcSubject !== null && identity.emailVerified !== true) {
-      console.warn(`Sign-in refused: OWNER_EMAIL is linked to another identity, and the provider has not verified ${email} for this one.`);
+      console.warn("Sign-in refused: OWNER_EMAIL is linked to another identity, and the provider has not verified the email for this one.");
       return null;
     }
     const [linked] = await db

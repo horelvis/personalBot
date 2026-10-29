@@ -207,3 +207,8 @@ Avisos que quedan:
 > la 1, re-enlace automático
 
 Con una persona por instancia, la fuente de confianza es `OWNER_EMAIL`: si el proveedor configurado marca `email_verified: true` para ese email, la cuenta del owner se re-enlaza a la nueva identidad (emisor + `sub`) y conserva sus hilos y memorias. Sin verificación (`OIDC_TRUST_UNVERIFIED_EMAIL`) sigue el 403, con un aviso en el log del servidor. Risk: item 2 (auth).
+
+**L29** Aviso 2 hecho en `42b84df`. Verificador independiente: sin blockers. Revisión RDD (lentes risk y reliability): aprobada, con acknowledgement hecho. Petición del usuario sobre los avisos de la revisión, literal:
+> corregir el fallo
+
+Arreglado aquí: los avisos de rechazo ya no escriben el email en el log (R1-001, dato personal). Dos tests nuevos fijan comportamiento que ya existía: `email_verified: false` nunca re-enlaza, ni siquiera con `OIDC_TRUST_UNVERIFIED_EMAIL`; y el re-enlace solo toca la cuenta de `OWNER_EMAIL`, nunca la de un owner anterior. R1-002 no aplica: `accounts.ts:20` rechaza cualquier email que no sea el del owner antes de llegar al re-enlace. RED: las comprobaciones del log fallan con el código anterior. Checks: server 94/94, `tsc` exit 0.

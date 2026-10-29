@@ -142,6 +142,24 @@ describe("OIDC sign-in", () => {
     expect(callback.status).toBe(403);
     expect((await db.select().from(users).where(eq(users.email, "ana@example.com")))[0]?.oidcSubject).toBe("u-1");
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/OWNER_EMAIL is linked to another identity.*not verified/));
+    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("ana@example.com"));
+  });
+
+  it("never re-links the owner's account for an email the provider marks as not verified, even with OIDC_TRUST_UNVERIFIED_EMAIL", async () => {
+    const app = appWith({ trustUnverifiedEmail: true });
+    await signIn(app, { sub: "u-1", email: "ana@example.com" });
+    const callback = await signIn(app, { sub: "u-9", email: "ana@example.com", email_verified: false });
+    expect(callback.status).toBe(403);
+    expect((await db.select().from(users).where(eq(users.email, "ana@example.com")))[0]?.oidcSubject).toBe("u-1");
+  });
+
+  it("re-links only the account of OWNER_EMAIL: a verified holder of a former owner's email is refused and changes nothing", async () => {
+    const asLuis = appWith({ ownerEmail: "luis@example.com" });
+    await signIn(asLuis, { sub: "u-2", email: "luis@example.com" });
+    const app = appWith();
+    const callback = await signIn(app, { sub: "u-9", email: "luis@example.com" });
+    expect(callback.status).toBe(403);
+    expect((await db.select().from(users).where(eq(users.email, "luis@example.com")))[0]?.oidcSubject).toBe("u-2");
   });
 
   it("answers 502 when the provider cannot be reached, and works once it is back", async () => {
@@ -170,6 +188,7 @@ describe("OIDC sign-in", () => {
     expect(callback.status).toBe(403);
     expect((await db.select().from(users).where(eq(users.oidcSubject, "u-2")))[0]?.email).toBe("luis@example.com");
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/already belongs to another account/));
+    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("@example.com"));
   });
 
   it("refuses a code redeemed without the PKCE verifier of its login", async () => {
