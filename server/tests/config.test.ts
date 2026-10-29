@@ -78,6 +78,13 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...oidc, PUBLIC_URL: "https://example.com", OWNER_EMAIL: "ana@example.com, luis@example.com" })).toThrow(/OWNER_EMAIL/);
   });
 
+  it("uses Anthropic's server-side fallbacks unless ANTHROPIC_BASE_URL points at a gateway", () => {
+    expect(loadConfig({ DATABASE_URL: "postgres://x@localhost/x" }).serverSideFallbacks).toBe(true);
+    expect(loadConfig({ DATABASE_URL: "postgres://x@localhost/x", ANTHROPIC_BASE_URL: " " }).serverSideFallbacks).toBe(true);
+    const gateway = loadConfig({ DATABASE_URL: "postgres://x@localhost/x", ANTHROPIC_BASE_URL: "https://openrouter.ai/api" });
+    expect(gateway.serverSideFallbacks).toBe(false);
+  });
+
   it("warns about each retired team setting that is set, since one person per instance ignores it", () => {
     const config = loadConfig({
       DATABASE_URL: "postgres://x@localhost/x",

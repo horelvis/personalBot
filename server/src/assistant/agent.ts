@@ -19,6 +19,11 @@ export interface AssistantOptions {
   tools?: AssistantTool[];
   /** Extra system text gathered once at the start of each run, such as the person's saved facts. */
   context?: () => Promise<string>;
+  /**
+   * Anthropic's server-side fallbacks, a beta only its own API knows. Off for gateways that speak the
+   * Messages API, such as OpenRouter or DeepSeek, which reject or misread the field. Defaults to on.
+   */
+  serverSideFallbacks?: boolean;
   /** Asked before every tool call, known or not; a call it does not allow never runs. */
   authorize?: (call: { threadId: string; runId: string; tool: string; input: unknown }) => Promise<{ allowed: boolean }>;
 }
@@ -54,7 +59,7 @@ class Assistant extends AbstractAgent {
   }
 
   async #runTurn(input: RunAgentInput, emit: Emit, signal: AbortSignal): Promise<void> {
-    const { client, model, system = DEFAULT_SYSTEM, effort = "medium", tools = [], context, authorize } = this.#options;
+    const { client, model, system = DEFAULT_SYSTEM, effort = "medium", tools = [], context, authorize, serverSideFallbacks = true } = this.#options;
     emit({ type: EventType.RUN_STARTED, threadId: input.threadId, runId: input.runId });
 
     // Built once per run and never changed inside it: rebuilding the system prompt or the tools
@@ -76,8 +81,7 @@ class Assistant extends AbstractAgent {
           ...(toolDefinitions.length ? { tools: toolDefinitions } : {}),
           output_config: { effort },
           cache_control: { type: "ephemeral" },
-          betas: [FALLBACK_BETA],
-          fallbacks: "default",
+          ...(serverSideFallbacks ? { betas: [FALLBACK_BETA], fallbacks: "default" as const } : {}),
         },
         { signal },
       );
