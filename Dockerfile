@@ -20,5 +20,5 @@ COPY server/drizzle server/drizzle
 COPY --from=web /app/web/dist web/dist
 USER node
 EXPOSE 3001
-HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD wget -qO- http://127.0.0.1:3001/health || exit 1
+HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD wget -qO- "http://127.0.0.1:${PORT}/health" || exit 1
 CMD ["node", "server/src/index.ts"]

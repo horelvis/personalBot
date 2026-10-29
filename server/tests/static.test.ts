@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
 import { createTestDatabase } from "./helpers/database.ts";
+import { createUser } from "./helpers/users.ts";
 
 let dir: string;
 beforeAll(() => {
@@ -26,6 +27,18 @@ describe("serving the web app", () => {
     expect(await (await app.request("/threads/123")).text()).toContain("<title>personalBot</title>");
     expect((await app.request("/api/me")).status).toBe(401);
     expect((await app.request("/api/unknown")).status).toBe(401);
+  });
+
+  it("answers a signed-in request to an unknown API path exactly as it does without STATIC_DIR", async () => {
+    const db = await createTestDatabase();
+    const ana = await createUser(db, "ana@example.com");
+    const withWeb = createApp({ db, identify: async () => ana, staticDir: dir });
+    const apiOnly = createApp({ db, identify: async () => ana });
+    for (const path of ["/api/unknown", "/api"]) {
+      const [served, plain] = [await withWeb.request(path), await apiOnly.request(path)];
+      expect(served.status).toBe(404);
+      expect(await served.text()).toBe(await plain.text());
+    }
   });
 
   it("does not serve anything outside the API when STATIC_DIR is not set", async () => {

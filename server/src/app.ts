@@ -44,6 +44,8 @@ export function createApp({ db, identify, agentFetch, builtinAgents, auth, stati
   api.route("/bots", botRoutes(db));
   api.route("/threads", threadRoutes(db, { agentFetch, builtinAgents }));
   api.route("/memories", memoryRoutes(db));
+  // Unknown API paths stay 404 even when the web app's index.html fallback is mounted below.
+  api.all("*", (c) => c.notFound());
   app.route("/api", api);
 
   if (staticDir) {
