@@ -135,3 +135,5 @@ Pendiente de decisión del usuario:
 - (c) `SINGLE_USER` necesita `NODE_ENV=development`. Esto endurece lo que pedía S5 («se niega a arrancar si `NODE_ENV=production`»): ahora también se niega con cualquier otro valor;
 - (d) se responde 502 cuando el proveedor falla en la callback. Un `TypeError` de red se distingue de los errores OAuth de openid-client;
 - (e) se acepta como riesgo y queda documentado en S5.
+
+**L16** Revisión RDD de `e161ebd..fb50b0c`: aprobada, con acknowledgement hecho. Su aviso principal era que un proveedor caído que responde con un 5xx en HTML o con `server_error`/`temporarily_unavailable` seguía dando 400. Arreglado en `94fb30f`: RED 3/3 → GREEN 81/81; un `code` rechazado por el proveedor sigue dando 400.
