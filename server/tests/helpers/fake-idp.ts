@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Hono } from "hono";
 import { SignJWT, exportJWK, generateKeyPair } from "jose";
 import type { CustomFetch } from "openid-client";
@@ -37,6 +38,8 @@ export async function createFakeIdp() {
     const form = await c.req.parseBody();
     const grant = codes.get(String(form.code));
     if (!grant || form.client_id !== CLIENT_ID) return c.json({ error: "invalid_grant" }, 400);
+    const challenge = createHash("sha256").update(String(form.code_verifier)).digest("base64url");
+    if (challenge !== grant.codeChallenge) return c.json({ error: "invalid_grant", error_description: "PKCE verifier mismatch" }, 400);
     codes.delete(String(form.code));
     const idToken = await new SignJWT({ ...grant.claims, nonce: grant.nonce })
       .setProtectedHeader({ alg: "RS256", kid: "k1" })

@@ -1,6 +1,7 @@
 import type { HttpAgentFetchFn } from "@ag-ui/client";
 import { Hono } from "hono";
 import type { Identify, User } from "./auth/identify.ts";
+import { botRoutes } from "./bots/routes.ts";
 import { type Database, ping } from "./db/index.ts";
 import { memoryRoutes } from "./memory/routes.ts";
 import { type BuiltinAgents, threadRoutes } from "./threads/routes.ts";
@@ -36,6 +37,7 @@ export function createApp({ db, identify, agentFetch, builtinAgents, auth }: App
     const { id, email, name, role } = c.var.user;
     return c.json({ id, email, name, role });
   });
+  api.route("/bots", botRoutes(db));
   api.route("/threads", threadRoutes(db, { agentFetch, builtinAgents }));
   api.route("/memories", memoryRoutes(db));
   app.route("/api", api);
