@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { type Api, createApi } from "./api/client.ts";
 import type { Me } from "./api/types.ts";
+import { AppSidebar, type Tab } from "./components/AppSidebar.tsx";
 import { ErrorBanner } from "./components/ErrorBanner.tsx";
-import { Header, type Tab } from "./components/Header.tsx";
 import { SignIn } from "./components/SignIn.tsx";
 import { ChatContainer } from "./containers/ChatContainer.tsx";
 import { MemoriesContainer } from "./containers/MemoriesContainer.tsx";
@@ -36,17 +36,27 @@ export function App({ api: given }: { api?: Api }) {
   if (me === null) return <SignIn />;
 
   return (
-    <div className="app">
-      <Header me={me} tab={tab} onTab={setTab} onSignOut={signOut} />
-      <ErrorBanner message={error} />
-      {tab === "memories" ? (
-        <MemoriesContainer api={api} />
-      ) : (
-        <main className="workspace">
-          <ThreadsContainer api={api} selectedId={threadId} onOpen={(thread) => setThreadId(thread.id)} />
-          {threadId ? <ChatContainer key={threadId} api={api} threadId={threadId} /> : <p className="muted">Pick or start a thread.</p>}
-        </main>
-      )}
+    <div className="flex h-svh flex-col bg-background text-foreground md:flex-row">
+      <AppSidebar me={me} tab={tab} onTab={setTab} onSignOut={signOut}>
+        <ThreadsContainer
+          api={api}
+          selectedId={tab === "threads" ? threadId : null}
+          onOpen={(thread) => {
+            setThreadId(thread.id);
+            setTab("threads");
+          }}
+        />
+      </AppSidebar>
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <ErrorBanner message={error} />
+        {tab === "memories" ? (
+          <MemoriesContainer api={api} />
+        ) : threadId ? (
+          <ChatContainer key={threadId} api={api} threadId={threadId} />
+        ) : (
+          <p className="m-auto text-sm text-muted-foreground">Pick or start a thread.</p>
+        )}
+      </main>
     </div>
   );
 }

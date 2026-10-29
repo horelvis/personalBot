@@ -41,8 +41,8 @@ Supuestos confirmados por el usuario en L5:
 
 | ID | Specs | Ruta | Estado | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | S1, S2, S4 | inline | [ ] Base visual: Tailwind 4, tokens de `theme.css`, Inter, primitivas `ui` copiadas con atribución | |
-| T2 | S1, S3 | inline | [ ] Estructura: sidebar de la app con navegación, hilos y usuario; formulario de nuevo hilo | |
+| T1 | S1, S2, S4 | inline | [x] Base visual: Tailwind 4, tokens de `theme.css`, Inter, primitivas `ui` copiadas con atribución | 64e9db1 |
+| T2 | S1, S3 | inline | [x] Estructura: sidebar de la app con navegación, hilos y usuario; formulario de nuevo hilo | |
 | T3 | S1, S3 | inline | [ ] Chat: mensajes y caja de mensaje con el estilo de openbot | |
 | T4 | S1, S3 | inline | [ ] Memorias e inicio de sesión | |
 | T5 | S1–S4 | inline | [ ] Verificación: tests, typecheck, grep de `copilotkit`, capturas comparadas con openbot | |
@@ -69,3 +69,18 @@ Supuestos confirmados por el usuario en L5:
 > sí, confirmo, empieza con T1
 
 Tailwind 4 + shadcn entran como dependencias; las skins quedan fuera.
+
+**L6** T1 hecha en `64e9db1`. Dependencias nuevas, todas con versión fija: `tailwindcss` y `@tailwindcss/vite` 4.3.3, `@base-ui/react` 1.9.0, `class-variance-authority` 0.7.1, `clsx` 2.1.1, `tailwind-merge` 3.7.0 y `@fontsource-variable/inter` 5.3.0. `npm audit --omit=dev` = 0.
+- Copiados de openbot con atribución: `theme.css` entero; `lib/utils.ts`; `ui/button`, `input`, `textarea` y `label`. Las importaciones `@/` pasan a rutas relativas. Licencia en `web/NOTICE`.
+- No se copiaron `shadcn/tailwind.css`, `tw-animate-css` ni `ui/select`: las primitivas de T1 no los necesitan. El `<select>` sigue siendo nativo porque los tests lo usan por su etiqueta.
+- El modo oscuro sigue al sistema mediante la clase `.dark` en `main.tsx`, como en el tema de openbot.
+- El CSS anterior queda en `@layer components`, ya con los tokens de openbot; T2–T4 lo irán borrando pantalla a pantalla.
+- Excepción test-first: es un cambio solo visual, sin un RED significativo. Checks: `tsc` exit 0, 7/7 tests de web, `vite build` correcto (el CSS contiene los tokens oklch e Inter), sin `copilotkit` en `web/src` ni en `web/package.json`.
+- Risk: item 5 (dependencias nuevas). El verificador independiente se hará al final de la feature (T5).
+Siguiente: T2.
+
+**L7** T2: la barra lateral de openbot (clases de `app-sidebar.tsx`, `ui/sidebar.tsx` y `channel.tsx`) queda en `components/AppSidebar.tsx`, sin el `SidebarProvider`, el menú desplegable ni el panel móvil de openbot. En móvil la barra se apila arriba. `Header.tsx` desaparece: la marca va arriba, y Threads/Memories, el avatar con iniciales, el email y Sign out van en el pie. El formulario de nuevo hilo usa `Label`, `Input` y `Button`; el `<select>` sigue siendo nativo, con las clases de `Input`. Las filas de hilos usan las clases del `channel` de openbot.
+- Comportamiento nuevo: los hilos siguen visibles en la barra desde Memorias, y al abrir uno se vuelve al chat. Tiene su test, que falla con el código anterior y pasa con el nuevo.
+- El CSS antiguo queda limitado a `:where(.chat, .memories-page)` y `.button`, y se han borrado las reglas de cabecera, workspace e hilos.
+- Checks: `tsc` exit 0, 8/8 tests de web, `vite build` correcto.
+Siguiente: T3.

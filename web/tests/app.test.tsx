@@ -31,6 +31,25 @@ describe("App", () => {
     expect(await screen.findByRole("link", { name: "Sign in" })).toBeTruthy();
     expect(fake.calls.some((call) => call.method === "POST" && call.path === "/auth/logout")).toBe(true);
   });
+
+  it("keeps the threads in the sidebar on the memories page and opens the chat from there", async () => {
+    const fake = fakeFetch({
+      "GET /api/me": () => json(me),
+      "GET /api/threads": () => json([thread]),
+      "GET /api/bots": () => json([]),
+      "GET /api/memories": () => json([]),
+      "GET /api/threads/t1/messages": () => json([{ id: "m1", role: "assistant", content: "Welcome back" }]),
+    });
+    render(<App api={createApi(fake.fetch)} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Memories" }));
+    expect(await screen.findByText("Nothing remembered yet.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Plans" }));
+
+    expect(await screen.findByText("Welcome back")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Threads" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByText("Nothing remembered yet.")).toBeNull();
+  });
 });
 
 describe("ThreadsContainer", () => {
