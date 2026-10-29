@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
+import { createOpenIdProvider } from "./auth/oidc-client.ts";
 import { authRoutes } from "./auth/routes.ts";
 import { createSessionStore, sessionIdentify } from "./auth/sessions.ts";
 import { singleUserIdentify } from "./auth/single-user.ts";
@@ -39,7 +40,12 @@ const builtinAgents: BuiltinAgents = {
 const sessions = createSessionStore(db);
 const identify = config.singleUser ? singleUserIdentify(db) : sessionIdentify(sessions);
 if (config.singleUser) console.warn("SINGLE_USER=true: every request is the local admin. Development only.");
-const auth = authRoutes({ sessions, secureCookies: config.production });
+else if (!config.oidc) console.warn("No sign-in configured: set OIDC_ISSUER (or SINGLE_USER=true in development). The API admits nobody.");
+const auth = authRoutes({
+  sessions,
+  secureCookies: config.production,
+  ...(config.oidc ? { oidc: createOpenIdProvider(config.oidc), db, access: config.oidc } : {}),
+});
 serve({ fetch: createApp({ db, identify, builtinAgents, auth }).fetch, port: config.port }, ({ port }) => {
   console.log(`personalBot server listening on http://localhost:${port}`);
 });
