@@ -2,16 +2,17 @@ import type { HttpAgentFetchFn } from "@ag-ui/client";
 import { Hono } from "hono";
 import type { Identify, User } from "./auth/identify.ts";
 import { type Database, ping } from "./db/index.ts";
-import { threadRoutes } from "./threads/routes.ts";
+import { type BuiltinAgents, threadRoutes } from "./threads/routes.ts";
 
 export interface AppDependencies {
   db: Database;
   identify: Identify;
   /** How the server reaches AG-UI bots; the global fetch unless a test replaces it. */
   agentFetch?: HttpAgentFetchFn;
+  builtinAgents?: BuiltinAgents;
 }
 
-export function createApp({ db, identify, agentFetch }: AppDependencies) {
+export function createApp({ db, identify, agentFetch, builtinAgents }: AppDependencies) {
   const app = new Hono();
 
   app.get("/health", async (c) => {
@@ -26,7 +27,7 @@ export function createApp({ db, identify, agentFetch }: AppDependencies) {
     c.set("user", user);
     await next();
   });
-  api.route("/threads", threadRoutes(db, { agentFetch }));
+  api.route("/threads", threadRoutes(db, { agentFetch, builtinAgents }));
   app.route("/api", api);
 
   return app;

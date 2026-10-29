@@ -64,8 +64,8 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 | --- | --- | --- | --- | --- |
 | T1 | S1, S7 | inline | [x] Andamiaje: workspaces, TS, Vitest, Docker Compose de Postgres, esquema Drizzle + migraciones, config que solo exige `DATABASE_URL` | 415b90e |
 | T2 | S2 | inline | [x] Store de hilos/mensajes con aislamiento por usuario y bloqueo por hilo | 5b2cf20 |
-| T3 | S4, S2 | inline | [x] Relay AG-UI: `POST /api/threads/:id/runs` → bot por URL, SSE al navegador, persistencia | ver L7 |
-| T4 | S4 | inline | [ ] Bot integrado AG-UI con modelo configurable | |
+| T3 | S4, S2 | inline | [x] Relay AG-UI: `POST /api/threads/:id/runs` → bot por URL, SSE al navegador, persistencia | 5fcf544 |
+| T4 | S4 | inline | [x] Bot integrado AG-UI con modelo configurable | ver L8 |
 | T5 | S3 | inline | [ ] Memoria: store, herramientas `remember`/`recall`, inyección en contexto | |
 | T6 | S6 | inline | [ ] Gateway de herramientas: política + auditoría | |
 | T7 | S5 | inline | [ ] Autenticación OIDC, roles, modo usuario único solo en desarrollo | |
@@ -88,3 +88,5 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 **L6** T2: RED observado (faltaba `src/threads/store.ts`). Primer GREEN con un fallo real: el orden de `list` empataba porque PGlite solo tiene precisión de milisegundos (comprobado: `now()` repite `22:27:24.594`). Solución: el store usa un único reloj inyectable para `created_at`/`updated_at`, y el test le pasa un reloj que avanza. `npx vitest run` → 10/10 tests en 3 ejecuciones seguidas; `tsc` → exit 0. Specs cubiertas: S2 (persistencia tras una nueva instancia, upsert por id, aislamiento entre usuarios, un solo run por hilo y recuperación de bloqueos abandonados).
 
 **L7** T3: RED observado (faltaba `src/bots/store.ts`). GREEN: 18/18 tests y `tsc` exit 0. El relay usa el `HttpAgent` real de `@ag-ui/client` contra un bot AG-UI falso hecho con Hono (`tests/helpers/fake-bot.ts`), así que se ejercita el parseo SSE real. Cubre: 401 sin identidad, aislamiento (404), 409 con el hilo ocupado, historial enviado desde nuestro Postgres, RUN_ERROR ante un bot que falla (el mensaje del usuario se conserva y el hilo se libera). Seguridad: `@ag-ui/*` fija zod 3.25.76 (GHSA-mrhx-c7xc-m3w5, severidad alta, sin parche en 3.x); override de npm a `zod ^4.6.7` → `npm audit --omit=dev` = 0 vulnerabilidades tras una instalación limpia, y los tests siguen en verde. Hasta T7 `index.ts` usa un `identify` que no admite a nadie.
+
+**L8** T4: RED observado (faltaba `src/assistant/agent.ts`, y el test de `ASSISTANT_MODEL` fallaba). GREEN: 23/23 tests y `tsc` exit 0. El asistente es un `AbstractAgent` de AG-UI que se ejecuta en el propio servidor (URL `builtin:assistant`), para no exponer la clave del modelo detrás de una URL pública. Usa `@anthropic-ai/sdk` 1.3.0 con `claude-opus-5-5` por defecto (configurable con `ASSISTANT_MODEL`), streaming, `effort: medium` y `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`). Una negativa del modelo (`refusal`) se informa como RUN_ERROR. Los tests reproducen el stream SSE real de la Messages API con un `fetch` inyectado. `new Anthropic()` sin credenciales se construye sin error (comprobado), así que S1 se mantiene: el servidor arranca sin clave. rxjs fijado a 7.8.1 (la versión exacta que exige `@ag-ui/client`) para tener una sola copia.

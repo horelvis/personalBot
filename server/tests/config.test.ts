@@ -16,4 +16,10 @@ describe("loadConfig", () => {
     const config = loadConfig({ DATABASE_URL: "postgres://x@localhost/x", PORT: "8080" });
     expect(config.port).toBe(8080);
   });
+
+  it("uses Claude Opus 5.5 for the built-in assistant unless ASSISTANT_MODEL says otherwise", () => {
+    expect(loadConfig({ DATABASE_URL: "postgres://x@localhost/x" }).assistantModel).toBe("claude-opus-5-5");
+    const config = loadConfig({ DATABASE_URL: "postgres://x@localhost/x", ASSISTANT_MODEL: "claude-sonnet-5-5" });
+    expect(config.assistantModel).toBe("claude-sonnet-5-5");
+  });
 });
