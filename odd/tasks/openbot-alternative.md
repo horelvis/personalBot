@@ -198,3 +198,5 @@ Avisos que quedan:
 - `SINGLE_USER` tiene prioridad sobre OIDC (solo en desarrollo).
 
 **L25** Revisión RDD de T10 (lentes risk y reliability): aprobada, con acknowledgement hecho. Un solo aviso, que ya constaba en L24: `ADMIN_EMAILS` y `OIDC_ALLOWED_DOMAINS` se ignoran sin avisar. T10 queda cerrada. Siguiente: abrir la cadena de PRs (falta que el usuario elija la estrategia).
+
+**L26** Estrategia elegida por el usuario: «apilados contra main». Cadena de 13 PRs, cada uno en una rama `stack/NN-*` que apunta a un commit existente, sin reescribir historia: horelvis/personalBot #1–#13. #1 tiene base `main`; cada uno de los siguientes tiene como base la rama del anterior y pasará a `main` cuando se integre su padre. Se pidió `size:exception` para #5 (memoria, 661 líneas), #8 (OIDC, 518) y #11 (web, 1026), porque cada uno es un único commit con su código y sus tests. El merge queda en manos del usuario.
