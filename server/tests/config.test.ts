@@ -77,5 +77,22 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...oidc, PUBLIC_URL: "https://example.com", OWNER_EMAIL: "ana.example.com" })).toThrow(/OWNER_EMAIL is not an email address/);
     expect(() => loadConfig({ ...oidc, PUBLIC_URL: "https://example.com", OWNER_EMAIL: "ana@example.com, luis@example.com" })).toThrow(/OWNER_EMAIL/);
   });
+
+  it("warns about each retired team setting that is set, since one person per instance ignores it", () => {
+    const config = loadConfig({
+      DATABASE_URL: "postgres://x@localhost/x",
+      ADMIN_EMAILS: "ana@example.com",
+      OIDC_ALLOWED_DOMAINS: "example.com",
+    });
+    expect(config.warnings).toEqual([
+      "ADMIN_EMAILS is ignored: this instance serves one person, the one in OWNER_EMAIL.",
+      "OIDC_ALLOWED_DOMAINS is ignored: only the email in OWNER_EMAIL can sign in.",
+    ]);
+  });
+
+  it("has no warnings when no retired setting is set, or it is blank", () => {
+    expect(loadConfig({ DATABASE_URL: "postgres://x@localhost/x" }).warnings).toEqual([]);
+    expect(loadConfig({ DATABASE_URL: "postgres://x@localhost/x", ADMIN_EMAILS: " ", OIDC_ALLOWED_DOMAINS: "" }).warnings).toEqual([]);
+  });
 });
 

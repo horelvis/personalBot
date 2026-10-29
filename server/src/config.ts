@@ -10,6 +10,8 @@ export interface Config {
   staticDir?: string;
   /** Sign-in through any OpenID Connect provider; without it, only SINGLE_USER mode can sign anyone in. */
   oidc?: OidcConfig;
+  /** Settings that are set but have no effect, for the server to report at startup. */
+  warnings: string[];
 }
 
 export interface OidcConfig {
@@ -44,8 +46,21 @@ export function loadConfig(environment: Environment): Config {
     singleUser,
     production,
     oidc: loadOidcConfig(environment),
+    warnings: retiredSettings(environment),
     ...(environment.STATIC_DIR?.trim() ? { staticDir: environment.STATIC_DIR.trim() } : {}),
   };
+}
+
+// Left over from the team version: one person per instance has no admins and no domain allow-list.
+const retired: Record<string, string> = {
+  ADMIN_EMAILS: "this instance serves one person, the one in OWNER_EMAIL.",
+  OIDC_ALLOWED_DOMAINS: "only the email in OWNER_EMAIL can sign in.",
+};
+
+function retiredSettings(environment: Environment): string[] {
+  return Object.entries(retired)
+    .filter(([name]) => environment[name]?.trim())
+    .map(([name, reason]) => `${name} is ignored: ${reason}`);
 }
 
 function loadOidcConfig(environment: Environment): OidcConfig | undefined {
