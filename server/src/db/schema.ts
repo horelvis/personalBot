@@ -41,3 +41,12 @@ export const messages = pgTable(
   },
   (table) => [primaryKey({ columns: [table.threadId, table.id] }), index("messages_thread_position_idx").on(table.threadId, table.position)],
 );
+
+/** Bots are AG-UI endpoints reached by URL, whatever framework they are built with. */
+export const bots = pgTable("bots", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  url: text("url").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

@@ -5,7 +5,7 @@ import { createTestDatabase } from "./helpers/database.ts";
 describe("GET /health", () => {
   it("answers ok when the database is reachable", async () => {
     const db = await createTestDatabase();
-    const app = createApp({ db });
+    const app = createApp({ db, identify: async () => null });
     const response = await app.request("/health");
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "ok" });
