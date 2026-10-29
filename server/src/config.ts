@@ -6,6 +6,8 @@ export interface Config {
   /** Development only: everyone is one local admin, with no sign-in. */
   singleUser: boolean;
   production: boolean;
+  /** Directory of the built web app to serve, such as web/dist. */
+  staticDir?: string;
   /** Sign-in through any OpenID Connect provider; without it, only SINGLE_USER mode can sign anyone in. */
   oidc?: OidcConfig;
 }
@@ -43,6 +45,7 @@ export function loadConfig(environment: Environment): Config {
     singleUser,
     production,
     oidc: loadOidcConfig(environment),
+    ...(environment.STATIC_DIR?.trim() ? { staticDir: environment.STATIC_DIR.trim() } : {}),
   };
 }
 
