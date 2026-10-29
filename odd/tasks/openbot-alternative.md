@@ -82,7 +82,7 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 | T6 | S6 | inline | [x] Gateway de herramientas: política + auditoría | 11a3e05 |
 | T7 | S5 | inline | [x] Autenticación OIDC, roles, modo usuario único solo en desarrollo. Commits: (a) sesiones + `SINGLE_USER`, (b) OIDC, (c) roles + `/api/bots`, arreglo de colisión de email | 71fbca3, 3de4e13, 8d13cf6, 50bc212 |
 | T8 | S2, S4 | delegada (motivo: límite de contexto de la sesión padre) | [x] App web: lista de hilos, chat con streaming, memorias | 0dd8636 |
-| T9 | S7, S8 | inline | [ ] Dockerfile + compose completo, README honesto, LICENSE MIT | |
+| T9 | S7, S8 | inline | [x] Dockerfile + compose completo, README honesto, LICENSE MIT | 7759cb7, 7152fac, eb0463f |
 
 ## Log
 
@@ -152,3 +152,33 @@ T7 queda cerrada. **Siguiente: T8** (app web).
 - `/api/me` no reintenta tras un error que no sea 401.
 
 Risk: item 5 (dependencias nuevas y un workspace nuevo en el lockfile raíz). **Siguiente: T9.**
+
+**L19** T9:
+- `7759cb7`: el servidor sirve `STATIC_DIR`.
+- `7152fac`: Dockerfile de una sola imagen, servicio `app` en el compose, LICENSE MIT, campo `license` en los `package.json` y README sin CTAs.
+
+Verificador independiente de T8 y T9:
+- S1, S2, S4 y S8 pass.
+- S7 pass por lectura: `npm ci --workspace server --omit=dev` funciona en una copia aparte, y el arranque de producción sin Docker funciona contra `pglite-socket` (migraciones, `/health`, HTML, `/api/me` 401).
+- `docker compose config` y el arranque con Docker siguen sin probarse, porque Docker no está instalado.
+- Blocker: con `STATIC_DIR`, un GET con sesión a una ruta `/api` desconocida devolvía `index.html` con 200 en vez de 404. Arreglado en `eb0463f`: RED → GREEN (85/85), y la salida es idéntica a la de sin `STATIC_DIR`.
+
+Del mismo verificador se aplicaron dos avisos: Postgres publicado solo en `127.0.0.1`, y `PORT` respetado en los puertos del compose y en el `HEALTHCHECK`. Pendiente: la contraseña de Postgres está fija en el compose.
+
+Todas las tareas T1–T9 están completas. Pendiente del usuario: push y PR.
+
+**L20** S7 verificado con Docker 29.9.2 y Compose v5.6.1:
+- `docker compose config` es válido.
+- `docker compose up --build` construye la imagen (392 MB, corre como el usuario `node`), Postgres pasa a healthy y la app también.
+- `/health` 200, `/` y `/threads/abc` 200 HTML, `/api/me` y `/api/unknown` 401, `POST /auth/logout` 204, y se aplicaron las 8 migraciones.
+- `SINGLE_USER=true` dentro de la imagen se niega a arrancar.
+- Un dato insertado sobrevive a `docker compose restart`.
+
+El stack de prueba (proyecto `personalbot-s7`) se desmontó con su volumen.
+
+**L21** Idea aplazada por el usuario («vamos a dejarlo por ahora»): ejecutar Python para analizar datos. Opciones evaluadas:
+1. La herramienta de ejecución de código de Anthropic (`code_execution_20260521`): no hay que montar nada y los ficheros llegan por la Files API, pero solo sirve para el asistente integrado y los datos se procesan en Anthropic.
+2. Docker Sandboxes: la API y el SDK solo cubren los sandboxes en la nube, que son de pago; la versión local es gratis pero está pensada para la CLI de agentes (`sbx run`). Es la que peor encaja.
+3. Un sandbox propio con Docker Engine: un contenedor efímero por ejecución, sin red, con el sistema de archivos de solo lectura, límites de CPU, memoria y tiempo, y gVisor como opción. Es la más coherente con S1, pero exige proteger el acceso del servidor al Docker del host.
+
+Recomendación: un puerto `CodeSandbox` con el adaptador 3 por defecto y el 1 como opcional, ambos detrás del gateway de T6 (política + auditoría). Sin implementar.

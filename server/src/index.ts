@@ -46,6 +46,6 @@ const auth = authRoutes({
   secureCookies: config.production,
   ...(config.oidc ? { oidc: createOpenIdProvider(config.oidc), db, access: config.oidc } : {}),
 });
-serve({ fetch: createApp({ db, identify, builtinAgents, auth }).fetch, port: config.port }, ({ port }) => {
+serve({ fetch: createApp({ db, identify, builtinAgents, auth, staticDir: config.staticDir }).fetch, port: config.port }, ({ port }) => {
   console.log(`personalBot server listening on http://localhost:${port}`);
 });
