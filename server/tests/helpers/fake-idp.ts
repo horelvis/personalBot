@@ -18,6 +18,7 @@ export async function createFakeIdp() {
   const { publicKey, privateKey } = await generateKeyPair("RS256");
   const jwk = { ...(await exportJWK(publicKey)), kid: "k1", alg: "RS256", use: "sig" };
   const codes = new Map<string, { claims: IdentityClaims; nonce: string; codeChallenge: string }>();
+  let tokenOutage: (() => Response) | undefined;
 
   const app = new Hono();
   app.get("/.well-known/openid-configuration", (c) =>
@@ -35,6 +36,7 @@ export async function createFakeIdp() {
   );
   app.get("/jwks", (c) => c.json({ keys: [jwk] }));
   app.post("/token", async (c) => {
+    if (tokenOutage) return tokenOutage();
     const form = await c.req.parseBody();
     const grant = codes.get(String(form.code));
     if (!grant || form.client_id !== CLIENT_ID) return c.json({ error: "invalid_grant" }, 400);
@@ -53,6 +55,10 @@ export async function createFakeIdp() {
   });
 
   return {
+    /** Makes the token endpoint answer like a provider that is down. */
+    failTokenEndpoint(response: () => Response) {
+      tokenOutage = response;
+    },
     fetch: (async (url, options) => app.request(new Request(url, options as RequestInit))) satisfies CustomFetch,
     /** What the IdP does after the person signs in: hands the browser a code bound to the request's nonce. */
     issueCode(authorizationUrl: URL, claims: IdentityClaims): string {

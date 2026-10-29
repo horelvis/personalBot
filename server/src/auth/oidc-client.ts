@@ -70,12 +70,14 @@ async function discover(settings: OpenIdSettings, fetch: client.CustomFetch | un
   return config;
 }
 
-/** Errors about the response itself (forged state, bad code, wrong nonce) as opposed to failing to reach the provider. */
+// An answer that is not an OAuth response at all, such as a proxy's HTML error page.
+const UNREADABLE_RESPONSE = new Set(["OAUTH_RESPONSE_IS_NOT_JSON", "OAUTH_RESPONSE_IS_NOT_CONFORM"]);
+const PROVIDER_FAULTS = new Set(["server_error", "temporarily_unavailable"]);
+
+/** Errors about the response itself (forged state, bad code, wrong nonce) as opposed to the provider being down. */
 function isProtocolError(error: unknown): boolean {
-  return (
-    error instanceof client.AuthorizationResponseError ||
-    error instanceof client.ResponseBodyError ||
-    error instanceof client.WWWAuthenticateChallengeError ||
-    (error instanceof client.ClientError && Boolean(error.code?.startsWith("OAUTH_")))
-  );
+  if (error instanceof client.ResponseBodyError) return error.status < 500 && !PROVIDER_FAULTS.has(error.error);
+  if (error instanceof client.AuthorizationResponseError) return !PROVIDER_FAULTS.has(error.error);
+  if (error instanceof client.WWWAuthenticateChallengeError) return true;
+  return error instanceof client.ClientError && Boolean(error.code?.startsWith("OAUTH_")) && !UNREADABLE_RESPONSE.has(error.code ?? "");
 }

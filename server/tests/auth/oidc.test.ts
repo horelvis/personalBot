@@ -227,5 +227,21 @@ describe("OIDC sign-in", () => {
     expect(response.status).toBe(502);
     expect(await db.select().from(sessions)).toEqual([]);
   });
+
+  it.each([
+    ["an HTML error page", () => new Response("<h1>503 Service Unavailable</h1>", { status: 503, headers: { "content-type": "text/html" } })],
+    ["an OAuth temporarily_unavailable error", () => Response.json({ error: "temporarily_unavailable" }, { status: 503 })],
+    ["an OAuth server_error", () => Response.json({ error: "server_error" }, { status: 500 })],
+  ])("answers 502 when the token endpoint is down and returns %s", async (_, outage) => {
+    const app = appWith();
+    const response = await signIn(app, { sub: "u-1", email: "ana@example.com" }, () => idp.failTokenEndpoint(outage));
+    expect(response.status).toBe(502);
+  });
+
+  it("still answers 400 when the provider rejects the code itself", async () => {
+    const app = appWith();
+    const response = await signIn(app, { sub: "u-1", email: "ana@example.com" }, (url) => url.searchParams.set("code", "unknown"));
+    expect(response.status).toBe(400);
+  });
 });
 
