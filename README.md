@@ -2,6 +2,8 @@
 
 A self-hosted agent platform for teams. Bots speak the open [AG-UI](https://docs.ag-ui.com) protocol, and threads, memory and the tool audit log live in your own PostgreSQL. No hosted service is required to start it, and nothing is held back as a paid component: everything here is MIT.
 
+personalBot started as an alternative to [CopilotKit/openbot](https://github.com/CopilotKit/openbot), written from scratch. openbot needs CopilotKit Intelligence to start, and its threads and memory live there. personalBot keeps the same idea, a team chat with AG-UI bots, but stores everything in your own database.
+
 ## What it does
 
 - **Threads you own.** Every conversation is stored in your Postgres. Each thread belongs to one person, and only one run can be active in a thread at a time.
