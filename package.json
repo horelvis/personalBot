@@ -1,0 +1,10 @@
+{
+  "name": "personalbot",
+  "private": true,
+  "type": "module",
+  "workspaces": ["server"],
+  "scripts": {
+    "test": "npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}
