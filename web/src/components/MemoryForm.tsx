@@ -1,4 +1,7 @@
 import { type FormEvent, useState } from "react";
+import { Button } from "./ui/button.tsx";
+import { Input } from "./ui/input.tsx";
+import { Label } from "./ui/label.tsx";
 
 export function MemoryForm({ disabled, onAdd }: { disabled: boolean; onAdd: (content: string) => void }) {
   const [content, setContent] = useState("");
@@ -9,14 +12,14 @@ export function MemoryForm({ disabled, onAdd }: { disabled: boolean; onAdd: (con
     setContent("");
   }
   return (
-    <form className="memory-form" onSubmit={submit}>
-      <label>
+    <form className="flex items-end gap-2" onSubmit={submit}>
+      <Label className="flex-1 flex-col items-stretch gap-1.5 text-muted-foreground">
         New memory
-        <input value={content} maxLength={2000} onChange={(event) => setContent(event.target.value)} />
-      </label>
-      <button type="submit" disabled={disabled || !content.trim()}>
+        <Input className="text-foreground" value={content} maxLength={2000} onChange={(event) => setContent(event.target.value)} />
+      </Label>
+      <Button type="submit" disabled={disabled || !content.trim()}>
         Remember
-      </button>
+      </Button>
     </form>
   );
 }

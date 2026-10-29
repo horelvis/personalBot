@@ -32,7 +32,7 @@ export function App({ api: given }: { api?: Api }) {
   }
 
   if (error && me === undefined) return <ErrorBanner message={error} />;
-  if (me === undefined) return <p className="muted">Loading…</p>;
+  if (me === undefined) return <p className="m-auto p-8 text-center text-sm text-muted-foreground">Loading…</p>;
   if (me === null) return <SignIn />;
 
   return (

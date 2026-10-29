@@ -43,8 +43,8 @@ Supuestos confirmados por el usuario en L5:
 | --- | --- | --- | --- | --- |
 | T1 | S1, S2, S4 | inline | [x] Base visual: Tailwind 4, tokens de `theme.css`, Inter, primitivas `ui` copiadas con atribución | 64e9db1 |
 | T2 | S1, S3 | inline | [x] Estructura: sidebar de la app con navegación, hilos y usuario; formulario de nuevo hilo | 811ee53 |
-| T3 | S1, S3 | inline | [x] Chat: mensajes y caja de mensaje con el estilo de openbot | |
-| T4 | S1, S3 | inline | [ ] Memorias e inicio de sesión | |
+| T3 | S1, S3 | inline | [x] Chat: mensajes y caja de mensaje con el estilo de openbot | b9181d5 |
+| T4 | S1, S3 | inline | [x] Memorias e inicio de sesión | |
 | T5 | S1–S4 | inline | [ ] Verificación: tests, typecheck, grep de `copilotkit`, capturas comparadas con openbot | |
 
 ## Log
@@ -90,3 +90,8 @@ Siguiente: T3.
 - Se borra el CSS antiguo del chat y `.visually-hidden`; ahora se usa `sr-only` de Tailwind.
 - Checks: `tsc` exit 0, 8/8 tests de web, `vite build` correcto. Sin comportamiento nuevo: no hay RED.
 Siguiente: T4.
+
+**L9** T4: Memorias sigue la página de openbot (`page-shell.tsx`): columna `max-w-2xl` con `pt-12`, título `text-2xl font-medium tracking-tight` y descripción en `muted-foreground`. Las filas usan las clases de `ui/item.tsx` (`outline`, y `muted` en oscuro), el estado vacío las de `ui/empty.tsx` (borde discontinuo) y «Forget» es el `Button` `destructive`. El formulario usa `Label`, `Input` y `Button`. El inicio de sesión sigue `routes/sign.tsx`: columna `max-w-82` centrada y enlace con `buttonVariants` `outline`, `h-10`.
+- El CSS antiguo queda eliminado del todo: `styles.css` solo importa Tailwind, Inter y `theme.css`.
+- Checks: `tsc` exit 0, 8/8 tests de web, `vite build` correcto. Sin comportamiento nuevo: no hay RED.
+Siguiente: T5 (verificación, con verificador independiente por el item 5 de riesgo).
