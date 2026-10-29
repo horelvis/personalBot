@@ -19,6 +19,8 @@ export interface AssistantOptions {
   tools?: AssistantTool[];
   /** Extra system text gathered once at the start of each run, such as the person's saved facts. */
   context?: () => Promise<string>;
+  /** Asked before every tool call, known or not; a call it does not allow never runs. */
+  authorize?: (call: { threadId: string; runId: string; tool: string; input: unknown }) => Promise<{ allowed: boolean }>;
 }
 
 export function createAssistant(options: AssistantOptions): AbstractAgent {
@@ -52,7 +54,7 @@ class Assistant extends AbstractAgent {
   }
 
   async #runTurn(input: RunAgentInput, emit: Emit, signal: AbortSignal): Promise<void> {
-    const { client, model, system = DEFAULT_SYSTEM, effort = "medium", tools = [], context } = this.#options;
+    const { client, model, system = DEFAULT_SYSTEM, effort = "medium", tools = [], context, authorize } = this.#options;
     emit({ type: EventType.RUN_STARTED, threadId: input.threadId, runId: input.runId });
 
     // Built once per run and never changed inside it: rebuilding the system prompt or the tools
@@ -111,7 +113,11 @@ class Assistant extends AbstractAgent {
         emit({ type: EventType.TOOL_CALL_ARGS, toolCallId: block.id, delta: JSON.stringify(block.input) });
         emit({ type: EventType.TOOL_CALL_END, toolCallId: block.id });
 
-        const { content, isError } = await runTool(toolsByName.get(block.name), block.name, block.input);
+        const decision = await authorize?.({ threadId: input.threadId, runId: input.runId, tool: block.name, input: block.input });
+        const { content, isError } =
+          decision && !decision.allowed
+            ? { content: `${block.name} is blocked by policy.`, isError: true }
+            : await runTool(toolsByName.get(block.name), block.name, block.input);
         emit({ type: EventType.TOOL_CALL_RESULT, messageId: crypto.randomUUID(), toolCallId: block.id, content, role: "tool" });
         results.push({ type: "tool_result", tool_use_id: block.id, content, ...(isError ? { is_error: true } : {}) });
       }

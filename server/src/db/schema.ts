@@ -1,6 +1,6 @@
 import type { Message } from "@ag-ui/core";
 import { sql } from "drizzle-orm";
-import { bigserial, customType, index, jsonb, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { bigserial, check, customType, index, jsonb, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -72,5 +72,40 @@ export const memories = pgTable(
   (table) => [
     index("memories_owner_created_idx").on(table.ownerId, table.createdAt),
     index("memories_search_idx").using("gin", table.search),
+  ],
+);
+
+/** Allow/deny rules for the built-in assistant's tools; `*` matches every tool and deny wins. */
+export const toolRules = pgTable(
+  "tool_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tool: text("tool").notNull(),
+    effect: text("effect", { enum: ["allow", "deny"] }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Enforced by Postgres too: a rule written by hand with a typo must fail, not silently allow.
+  (table) => [check("tool_rules_effect_check", sql`${table.effect} in ('allow', 'deny')`)],
+);
+
+/** One row per tool call, written with the gateway's decision before the tool acts. */
+export const toolAudit = pgTable(
+  "tool_audit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    threadId: text("thread_id").notNull(),
+    runId: text("run_id").notNull(),
+    tool: text("tool").notNull(),
+    // Null when the model sent no input at all.
+    input: jsonb("input"),
+    decision: text("decision", { enum: ["allow", "deny"] }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("tool_audit_user_created_idx").on(table.userId, table.createdAt),
+    check("tool_audit_decision_check", sql`${table.decision} in ('allow', 'deny')`),
   ],
 );
