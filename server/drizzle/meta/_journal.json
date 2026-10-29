@@ -43,6 +43,13 @@
       "when": 1793227380569,
       "tag": "0005_tool_gateway_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793227506118,
+      "tag": "0006_sessions",
+      "breakpoints": true
     }
   ]
 }

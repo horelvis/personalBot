@@ -22,4 +22,15 @@ describe("loadConfig", () => {
     const config = loadConfig({ DATABASE_URL: "postgres://x@localhost/x", ASSISTANT_MODEL: "claude-sonnet-5-5" });
     expect(config.assistantModel).toBe("claude-sonnet-5-5");
   });
+
+  it("refuses SINGLE_USER=true when NODE_ENV=production", () => {
+    expect(() => loadConfig({ DATABASE_URL: "postgres://x@localhost/x", SINGLE_USER: "true", NODE_ENV: "production" })).toThrow(
+      /SINGLE_USER=true is for development only/,
+    );
+  });
+
+  it("enables single-user mode outside production only when SINGLE_USER=true", () => {
+    expect(loadConfig({ DATABASE_URL: "postgres://x@localhost/x", SINGLE_USER: "true" }).singleUser).toBe(true);
+    expect(loadConfig({ DATABASE_URL: "postgres://x@localhost/x" }).singleUser).toBe(false);
+  });
 });
