@@ -45,7 +45,7 @@ Supuestos confirmados por el usuario en L5:
 | T2 | S1, S3 | inline | [x] Estructura: sidebar de la app con navegación, hilos y usuario; formulario de nuevo hilo | 9bc7fbc |
 | T3 | S1, S3 | inline | [x] Chat: mensajes y caja de mensaje con el estilo de openbot | 469eb51 |
 | T4 | S1, S3 | inline | [x] Memorias e inicio de sesión | fdd0f9d |
-| T5 | S1–S4 | inline | [ ] Verificación: tests, typecheck, grep de `copilotkit`, capturas comparadas con openbot | |
+| T5 | S1–S4 | inline + verificador independiente | [x] Verificación: tests, typecheck, grep de `copilotkit`, capturas comparadas con openbot | |
 
 ## Log
 
@@ -102,3 +102,17 @@ Petición del usuario, literal:
 > arregla el email cortado y el select desalineado
 
 Arreglado: en el pie de la barra, el nombre y el email van en dos líneas (el email en `text-xs`, sin cortar «local@localhost»); el `<select>` usa `appearance-none` con `pl-2.5` y un chevron de Tabler dibujado, así que su texto queda alineado con el del `Input`. Checks: `tsc` exit 0, 8/8 tests de web, capturas revisadas en claro y oscuro.
+
+**L11** T5, verificador independiente sobre clones aparte de `ae1aaac` (base) y de la rama: **sin blockers**.
+- S2 pasa: no hay `@copilotkit` en `web/` ni en el lockfile.
+- S3 pasa: `npm ci` correcto; server 91/91 y web 8/8; `typecheck` y `build` correctos. Su inventario de nombres accesibles, ejecutado en base y en HEAD, sale idéntico; el teclado de la caja de mensaje (Enter envía, Shift+Enter no) no cambia.
+- S1 parcial: los archivos copiados son idénticos al original salvo la cabecera y las importaciones, y las clases de las pantallas coinciden con las de openbot. No hubo comparación visual lado a lado porque openbot no publica capturas ni arranca sin Intelligence; en su lugar, capturas de personalBot en claro y oscuro (L10).
+- S4 parcial → arreglado aquí: cabecera de atribución añadida a `ThreadList.tsx` y `NewThreadForm.tsx`; `web/NOTICE` cubre ahora todo componente cuya cabecera nombra a CopilotKit/openbot.
+- Dependencias (item 5 de riesgo): todas con versión fija; `npm audit --omit=dev` = 0.
+
+Avisos que quedan sin tocar:
+1. `ui/button.tsx` conserva un comentario de openbot sobre «six call sites» que no aplica a personalBot (copia literal).
+2. La lista de hilos ya no se recarga al volver de Memorias, porque sigue montada. Solo el usuario crea hilos, desde ese mismo formulario, así que hoy no se pierde nada.
+3. Sin landmark `banner`: la cabecera vive dentro del `aside`. Los nombres accesibles están intactos.
+
+Feature completa. Copias temporales del verificador borradas.

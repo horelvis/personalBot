@@ -1,3 +1,5 @@
+// Select classes adapted from CopilotKit/openbot (app/src/components/ui/input.tsx, commit 4766e42).
+// Copyright (c) 2026 CopilotKit. MIT License; see web/NOTICE.
 import { type FormEvent, useState } from "react";
 import type { Bot } from "../api/types.ts";
 import { Button } from "./ui/button.tsx";

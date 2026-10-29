@@ -1,7 +1,8 @@
 personalBot web adapts the look of CopilotKit/openbot
 (https://github.com/CopilotKit/openbot, commit 4766e42): src/theme.css,
-src/lib/utils.ts and src/components/ui/*. Those files are used under the
-following license.
+src/lib/utils.ts and src/components/ui/* are copied from it, and the
+components whose header names CopilotKit/openbot reuse its
+layout and classes. That material is used under the following license.
 
 MIT License
 

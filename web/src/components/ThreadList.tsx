@@ -1,3 +1,5 @@
+// Row classes adapted from CopilotKit/openbot (app/src/components/app-sidebar/channel.tsx, commit 4766e42).
+// Copyright (c) 2026 CopilotKit. MIT License; see web/NOTICE.
 import type { Thread } from "../api/types.ts";
 import { cn } from "../lib/utils.ts";
 
@@ -19,7 +21,6 @@ export function ThreadList({ threads, selectedId, onOpen }: ThreadListProps) {
     <ul className="flex flex-col gap-px">
       {threads.map((thread) => (
         <li key={thread.id}>
-          {/* Row classes from openbot's channel row (app/src/components/app-sidebar/channel.tsx). */}
           <button
             type="button"
             aria-current={thread.id === selectedId}
