@@ -40,9 +40,12 @@ export function createSessionStore(db: Database, { now = () => new Date(), ttlMs
 
 export type SessionStore = ReturnType<typeof createSessionStore>;
 
-export function sessionIdentify(store: SessionStore): Identify {
+/** With adminEmails, the role follows that list on every request, so removing someone takes effect at once. */
+export function sessionIdentify(store: SessionStore, { adminEmails }: { adminEmails?: string[] } = {}): Identify {
   return async (c) => {
     const token = getCookie(c, SESSION_COOKIE);
-    return token ? store.resolve(token) : null;
+    const user = token ? await store.resolve(token) : null;
+    if (!user || !adminEmails) return user;
+    return { ...user, role: adminEmails.includes(user.email.toLowerCase()) ? "admin" : "member" };
   };
 }

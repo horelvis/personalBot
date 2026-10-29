@@ -18,14 +18,15 @@ beforeEach(async () => {
   idp = await createFakeIdp();
 });
 
-function appWith({ allowedDomains = ["example.com"] as string[] | "*", adminEmails = [] as string[] } = {}) {
+function appWith({ allowedDomains = ["example.com"] as string[] | "*", adminEmails = [] as string[], trustUnverifiedEmail = false, fetch = idp.fetch } = {}) {
   const store = createSessionStore(db);
   const oidc = createOpenIdProvider(
     { issuer: ISSUER, clientId: CLIENT_ID, redirectUri: "http://localhost:3001/auth/callback" },
-    { fetch: idp.fetch },
+    { fetch },
   );
-  const auth = authRoutes({ sessions: store, secureCookies: false, oidc, db, access: { allowedDomains, adminEmails }, afterSignIn: "/" });
-  return createApp({ db, identify: sessionIdentify(store), auth });
+  const access = { allowedDomains, adminEmails, trustUnverifiedEmail };
+  const auth = authRoutes({ sessions: store, secureCookies: false, oidc, db, access, afterSignIn: "/" });
+  return createApp({ db, identify: sessionIdentify(store, { adminEmails }), auth });
 }
 
 function cookiesFrom(response: Response): string {
@@ -40,7 +41,7 @@ async function signIn(app: ReturnType<typeof appWith>, claims: IdentityClaims, t
   const login = await app.request("/auth/login");
   const authorizationUrl = new URL(login.headers.get("location") ?? "");
   const callback = new URL("http://localhost:3001/auth/callback");
-  callback.searchParams.set("code", idp.issueCode(authorizationUrl, claims));
+  callback.searchParams.set("code", idp.issueCode(authorizationUrl, { email_verified: true, ...claims }));
   callback.searchParams.set("state", authorizationUrl.searchParams.get("state") ?? "");
   tamper?.(callback);
   return app.request(callback.pathname + callback.search, { headers: { cookie: cookiesFrom(login) } });
@@ -133,7 +134,7 @@ describe("OIDC sign-in", () => {
       { issuer: ISSUER, clientId: CLIENT_ID, redirectUri: "http://localhost:3001/auth/callback" },
       { fetch: async (url, options) => (down ? Promise.reject(new Error("ECONNREFUSED")) : idp.fetch(url, options)) },
     );
-    const app = createApp({ db, identify: sessionIdentify(store), auth: authRoutes({ sessions: store, secureCookies: false, oidc, db, access: { allowedDomains: "*", adminEmails: [] } }) });
+    const app = createApp({ db, identify: sessionIdentify(store), auth: authRoutes({ sessions: store, secureCookies: false, oidc, db, access: { allowedDomains: "*", adminEmails: [], trustUnverifiedEmail: false } }) });
 
     const failed = await app.request("/auth/login");
     expect(failed.status).toBe(502);
@@ -193,9 +194,38 @@ describe("OIDC sign-in", () => {
   it("scopes the login cookie to the callback path, also under a PUBLIC_URL prefix", async () => {
     const store = createSessionStore(db);
     const oidc = createOpenIdProvider({ issuer: ISSUER, clientId: CLIENT_ID, redirectUri: "https://example.com/bot/auth/callback" }, { fetch: idp.fetch });
-    const app = createApp({ db, identify: sessionIdentify(store), auth: authRoutes({ sessions: store, secureCookies: true, oidc, db, access: { allowedDomains: "*", adminEmails: [] } }) });
+    const app = createApp({ db, identify: sessionIdentify(store), auth: authRoutes({ sessions: store, secureCookies: true, oidc, db, access: { allowedDomains: "*", adminEmails: [], trustUnverifiedEmail: false } }) });
     const login = await app.request("/auth/login");
     expect(login.headers.getSetCookie().join()).toMatch(/Path=\/bot\/auth;.*Secure/);
+  });
+
+  it("refuses an email without email_verified unless OIDC_TRUST_UNVERIFIED_EMAIL is on", async () => {
+    const claims = { sub: "u-8", email: "ana@example.com", email_verified: undefined };
+    expect((await signIn(appWith(), claims)).status).toBe(403);
+    expect((await signIn(appWith({ trustUnverifiedEmail: true }), claims)).status).toBe(302);
+  });
+
+  it("drops admin rights from open sessions as soon as the email leaves ADMIN_EMAILS", async () => {
+    const before = appWith({ adminEmails: ["boss@example.com"] });
+    const callback = await signIn(before, { sub: "u-2", email: "boss@example.com" });
+    const after = appWith({ adminEmails: [] });
+    expect(await (await me(after, callback)).json()).toMatchObject({ role: "member" });
+    const register = await after.request("/api/bots", {
+      method: "POST",
+      headers: { cookie: cookiesFrom(callback), "content-type": "application/json" },
+      body: JSON.stringify({ id: "x", name: "X", url: "https://agents.example.com/x" }),
+    });
+    expect(register.status).toBe(403);
+  });
+
+  it("answers 502, not 400, when the provider fails during the callback", async () => {
+    let down = false;
+    const app = appWith({ fetch: async (url, options) => (down ? Promise.reject(new TypeError("fetch failed")) : idp.fetch(url, options)) });
+    const response = await signIn(app, { sub: "u-1", email: "ana@example.com" }, () => {
+      down = true;
+    });
+    expect(response.status).toBe(502);
+    expect(await db.select().from(sessions)).toEqual([]);
   });
 });
 

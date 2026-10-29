@@ -18,6 +18,8 @@ export interface OidcConfig {
   /** Email domains allowed to sign in, or "*" for anyone the issuer authenticates. */
   allowedDomains: string[] | "*";
   adminEmails: string[];
+  /** Accept an email the provider does not mark as verified, for providers such as Entra that never send email_verified. */
+  trustUnverifiedEmail: boolean;
 }
 
 type Environment = Record<string, string | undefined>;
@@ -30,8 +32,9 @@ export function loadConfig(environment: Environment): Config {
   }
   const production = environment.NODE_ENV === "production";
   const singleUser = environment.SINGLE_USER === "true";
-  if (singleUser && production) {
-    throw new Error("SINGLE_USER=true is for development only and cannot run with NODE_ENV=production.");
+  // Opt-in, not opt-out: a forgotten or misspelled NODE_ENV must not leave the API open.
+  if (singleUser && environment.NODE_ENV !== "development") {
+    throw new Error("SINGLE_USER=true is for development only and needs NODE_ENV=development.");
   }
   return {
     databaseUrl,
@@ -63,6 +66,7 @@ function loadOidcConfig(environment: Environment): OidcConfig | undefined {
     redirectUri: callbackUrl(publicUrl),
     allowedDomains: domains === "*" ? "*" : nonEmpty("OIDC_ALLOWED_DOMAINS", list(domains)),
     adminEmails: list(environment.ADMIN_EMAILS ?? ""),
+    trustUnverifiedEmail: environment.OIDC_TRUST_UNVERIFIED_EMAIL === "true",
   };
 }
 

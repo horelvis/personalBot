@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { Database } from "../db/index.ts";
 import { type AccessPolicy, signInAccount } from "./accounts.ts";
-import type { OidcProvider, PendingLogin } from "./oidc.ts";
+import { type OidcProvider, type PendingLogin, ProviderUnavailableError } from "./oidc.ts";
 import { SESSION_COOKIE, type SessionStore } from "./sessions.ts";
 
 const LOGIN_COOKIE = "personalbot_oidc";
@@ -56,6 +56,10 @@ export function authRoutes({ sessions, secureCookies, oidc, db, access, afterSig
       try {
         identity = await oidc.finish(callbackUrl, pending);
       } catch (error) {
+        if (error instanceof ProviderUnavailableError) {
+          console.error(error.message);
+          return c.json({ error: "The sign-in provider cannot be reached right now. Try again later." }, 502);
+        }
         console.warn("OIDC callback rejected:", error instanceof Error ? error.message : error);
         return c.json({ error: "Sign-in failed. Try again." }, 400);
       }

@@ -9,12 +9,16 @@ export interface AccessPolicy {
   allowedDomains: string[] | "*";
   /** Lower-case emails that sign in as admin; everyone else is a member. */
   adminEmails: string[];
+  /** Without it, only an email the provider marks email_verified: true can sign in. */
+  trustUnverifiedEmail: boolean;
 }
 
 /** The account for someone the provider signed in, or null when they may not sign in. */
 export async function signInAccount(db: Database, identity: OidcIdentity, access: AccessPolicy): Promise<User | null> {
   const email = identity.email?.trim().toLowerCase();
   if (!email || identity.emailVerified === false) return null;
+  // An unverified email may be one the person merely typed in at the provider; it must not claim an account.
+  if (identity.emailVerified !== true && !access.trustUnverifiedEmail) return null;
   const domain = email.slice(email.lastIndexOf("@") + 1);
   if (access.allowedDomains !== "*" && !access.allowedDomains.includes(domain) && !access.adminEmails.includes(email)) return null;
 

@@ -1,5 +1,5 @@
 import * as client from "openid-client";
-import type { OidcIdentity, OidcProvider, PendingLogin } from "./oidc.ts";
+import { type OidcIdentity, type OidcProvider, type PendingLogin, ProviderUnavailableError } from "./oidc.ts";
 
 export interface OpenIdSettings {
   issuer: string;
@@ -35,12 +35,17 @@ export function createOpenIdProvider(settings: OpenIdSettings, { fetch }: { fetc
     },
 
     async finish(callbackUrl, pending) {
-      const tokens = await client.authorizationCodeGrant(await configure(), callbackUrl, {
-        pkceCodeVerifier: pending.codeVerifier,
-        expectedState: pending.state,
-        expectedNonce: pending.nonce,
-        idTokenExpected: true,
-      });
+      let tokens;
+      try {
+        tokens = await client.authorizationCodeGrant(await configure(), callbackUrl, {
+          pkceCodeVerifier: pending.codeVerifier,
+          expectedState: pending.state,
+          expectedNonce: pending.nonce,
+          idTokenExpected: true,
+        });
+      } catch (error) {
+        throw isProtocolError(error) ? error : new ProviderUnavailableError(error);
+      }
       const claims = tokens.claims();
       if (!claims) throw new Error("The provider returned no ID token.");
       const identity: OidcIdentity = { issuer: claims.iss, subject: claims.sub };
@@ -63,4 +68,14 @@ async function discover(settings: OpenIdSettings, fetch: client.CustomFetch | un
   );
   if (fetch) config[client.customFetch] = fetch;
   return config;
+}
+
+/** Errors about the response itself (forged state, bad code, wrong nonce) as opposed to failing to reach the provider. */
+function isProtocolError(error: unknown): boolean {
+  return (
+    error instanceof client.AuthorizationResponseError ||
+    error instanceof client.ResponseBodyError ||
+    error instanceof client.WWWAuthenticateChallengeError ||
+    (error instanceof client.ClientError && Boolean(error.code?.startsWith("OAUTH_")))
+  );
 }
