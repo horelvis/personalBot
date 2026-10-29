@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, getTableColumns, gt } from "drizzle-orm";
+import { and, eq, getTableColumns, gt, lte } from "drizzle-orm";
 import { getCookie } from "hono/cookie";
 import type { Database } from "../db/index.ts";
 import { sessions, users } from "../db/schema.ts";
@@ -17,6 +17,8 @@ export function createSessionStore(db: Database, { now = () => new Date(), ttlMs
     /** A new opaque token for userId; the caller puts it in the cookie. */
     async create(userId: string): Promise<string> {
       const token = randomBytes(32).toString("base64url");
+      // Cleans up as it goes, so expired rows do not pile up.
+      await db.delete(sessions).where(and(eq(sessions.userId, userId), lte(sessions.expiresAt, now())));
       await db.insert(sessions).values({ tokenHash: hash(token), userId, expiresAt: new Date(now().getTime() + ttlMs) });
       return token;
     },

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Database } from "../db/index.ts";
 import { users } from "../db/schema.ts";
 import type { User } from "./identify.ts";
@@ -20,7 +20,8 @@ export async function signInAccount(db: Database, identity: OidcIdentity, access
 
   // ADMIN_EMAILS is the source of truth for the role, so removing someone from it demotes them on their next sign-in.
   const profile = { email, name: identity.name ?? null, role: access.adminEmails.includes(email) ? ("admin" as const) : ("member" as const) };
-  const [sameEmail] = await db.select().from(users).where(eq(users.email, email));
+  // Accounts created by hand may keep mixed case; sign-in always compares lower case.
+  const [sameEmail] = await db.select().from(users).where(eq(sql`lower(${users.email})`, email));
   const ownsEmail = sameEmail?.oidcIssuer === identity.issuer && sameEmail.oidcSubject === identity.subject;
   const sameIdentity = and(eq(users.oidcIssuer, identity.issuer), eq(users.oidcSubject, identity.subject));
   const [known] = await db.select({ id: users.id }).from(users).where(sameIdentity);
@@ -42,6 +43,13 @@ export async function signInAccount(db: Database, identity: OidcIdentity, access
     return linked ?? null;
   }
 
-  const [created] = await db.insert(users).values({ ...profile, oidcIssuer: identity.issuer, oidcSubject: identity.subject }).returning();
-  return created ?? null;
+  const [created] = await db
+    .insert(users)
+    .values({ ...profile, oidcIssuer: identity.issuer, oidcSubject: identity.subject })
+    .onConflictDoNothing()
+    .returning();
+  if (created) return created;
+  // A concurrent sign-in of the same person won the insert: use its account.
+  const [winner] = await db.select().from(users).where(sameIdentity);
+  return winner ?? null;
 }

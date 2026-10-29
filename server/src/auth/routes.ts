@@ -24,6 +24,8 @@ export function authRoutes({ sessions, secureCookies, oidc, db, access, afterSig
   const cookie = { secure: secureCookies, httpOnly: true, sameSite: "Lax" } as const;
 
   if (oidc && db && access) {
+    // Where the browser sees the callback, which differs from /auth when PUBLIC_URL has a path prefix.
+    const loginPath = new URL(oidc.redirectUri).pathname.replace(/\/callback$/, "");
     app.get("/login", async (c) => {
       let started;
       try {
@@ -36,7 +38,7 @@ export function authRoutes({ sessions, secureCookies, oidc, db, access, afterSig
       // Ties the callback to this browser: state, nonce and PKCE verifier never leave it except to come back.
       setCookie(c, LOGIN_COOKIE, Buffer.from(JSON.stringify(pending)).toString("base64url"), {
         ...cookie,
-        path: "/auth",
+        path: loginPath,
         maxAge: LOGIN_TTL_SECONDS,
       });
       return c.redirect(url.href, 302);
@@ -44,7 +46,7 @@ export function authRoutes({ sessions, secureCookies, oidc, db, access, afterSig
 
     app.get("/callback", async (c) => {
       const pending = readPending(getCookie(c, LOGIN_COOKIE));
-      deleteCookie(c, LOGIN_COOKIE, { ...cookie, path: "/auth" });
+      deleteCookie(c, LOGIN_COOKIE, { ...cookie, path: loginPath });
       if (!pending) return c.json({ error: "Sign-in expired or was started in another browser. Try again." }, 400);
 
       // The provider redirected to redirectUri; rebuild it so a proxy in front does not change what is checked.

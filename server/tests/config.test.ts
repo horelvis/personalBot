@@ -62,5 +62,12 @@ describe("loadConfig", () => {
     });
     expect(loadConfig({ ...base, OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", PUBLIC_URL: "http://l", OIDC_ALLOWED_DOMAINS: "*" }).oidc?.allowedDomains).toBe("*");
   });
+
+  it("keeps a path prefix of PUBLIC_URL and rejects malformed sign-in settings with a hint", () => {
+    const oidc = { DATABASE_URL: "postgres://x@localhost/x", OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", OIDC_ALLOWED_DOMAINS: "example.com" };
+    expect(loadConfig({ ...oidc, PUBLIC_URL: "https://example.com/bot" }).oidc?.redirectUri).toBe("https://example.com/bot/auth/callback");
+    expect(() => loadConfig({ ...oidc, PUBLIC_URL: "not a url" })).toThrow(/PUBLIC_URL/);
+    expect(() => loadConfig({ ...oidc, PUBLIC_URL: "https://example.com", OIDC_ALLOWED_DOMAINS: " , ," })).toThrow(/OIDC_ALLOWED_DOMAINS/);
+  });
 });
 

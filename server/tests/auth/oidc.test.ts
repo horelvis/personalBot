@@ -8,6 +8,7 @@ import type { Database } from "../../src/db/index.ts";
 import { sessions, users } from "../../src/db/schema.ts";
 import { CLIENT_ID, ISSUER, type IdentityClaims, createFakeIdp } from "../helpers/fake-idp.ts";
 import { createTestDatabase } from "../helpers/database.ts";
+import { createUser } from "../helpers/users.ts";
 
 let db: Database;
 let idp: Awaited<ReturnType<typeof createFakeIdp>>;
@@ -161,6 +162,40 @@ describe("OIDC sign-in", () => {
     const response = await app.request(callback.pathname + callback.search, { headers: { cookie: cookiesFrom(other) } });
     expect(response.status).toBe(400);
     expect(await db.select().from(sessions)).toEqual([]);
+  });
+
+  it("links an account created before sign-in, whatever the case of its stored email", async () => {
+    const existing = await createUser(db, "Ana@Example.com");
+    const app = appWith();
+    const signedIn = await (await me(app, await signIn(app, { sub: "u-1", email: "ana@example.com" }))).json();
+    expect(signedIn.id).toBe(existing.id);
+    expect(await db.select().from(users)).toHaveLength(1);
+  });
+
+  it("admits an ADMIN_EMAILS address outside the allowed domains, and demotes it once removed", async () => {
+    const asAdmin = appWith({ adminEmails: ["boss@partner.org"] });
+    expect(await (await me(asAdmin, await signIn(asAdmin, { sub: "u-5", email: "boss@partner.org" }))).json()).toMatchObject({ role: "admin" });
+
+    const removed = appWith({ allowedDomains: ["partner.org"] });
+    expect(await (await me(removed, await signIn(removed, { sub: "u-5", email: "boss@partner.org" }))).json()).toMatchObject({ role: "member" });
+  });
+
+  it("signs the same new person in from two tabs at once without an error", async () => {
+    const app = appWith();
+    const [first, second] = await Promise.all([
+      signIn(app, { sub: "u-7", email: "new@example.com" }),
+      signIn(app, { sub: "u-7", email: "new@example.com" }),
+    ]);
+    expect([first.status, second.status]).toEqual([302, 302]);
+    expect(await db.select().from(users)).toHaveLength(1);
+  });
+
+  it("scopes the login cookie to the callback path, also under a PUBLIC_URL prefix", async () => {
+    const store = createSessionStore(db);
+    const oidc = createOpenIdProvider({ issuer: ISSUER, clientId: CLIENT_ID, redirectUri: "https://example.com/bot/auth/callback" }, { fetch: idp.fetch });
+    const app = createApp({ db, identify: sessionIdentify(store), auth: authRoutes({ sessions: store, secureCookies: true, oidc, db, access: { allowedDomains: "*", adminEmails: [] } }) });
+    const login = await app.request("/auth/login");
+    expect(login.headers.getSetCookie().join()).toMatch(/Path=\/bot\/auth;.*Secure/);
   });
 });
 

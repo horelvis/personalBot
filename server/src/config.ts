@@ -60,10 +60,23 @@ function loadOidcConfig(environment: Environment): OidcConfig | undefined {
     issuer,
     clientId,
     ...(clientSecret ? { clientSecret } : {}),
-    redirectUri: new URL("/auth/callback", publicUrl).href,
-    allowedDomains: domains === "*" ? "*" : list(domains),
+    redirectUri: callbackUrl(publicUrl),
+    allowedDomains: domains === "*" ? "*" : nonEmpty("OIDC_ALLOWED_DOMAINS", list(domains)),
     adminEmails: list(environment.ADMIN_EMAILS ?? ""),
   };
+}
+
+function callbackUrl(publicUrl: string): string {
+  if (!URL.canParse(publicUrl)) throw new Error(`PUBLIC_URL is not a valid URL: ${publicUrl}. Use e.g. https://bot.example.com.`);
+  // Relative to a trailing slash, so an app served under a path prefix keeps it.
+  const base = new URL(publicUrl);
+  if (!base.pathname.endsWith("/")) base.pathname += "/";
+  return new URL("auth/callback", base).href;
+}
+
+function nonEmpty(name: string, values: string[]): string[] {
+  if (!values.length) throw new Error(`${name} lists no domains. Use comma-separated domains, or "*" for anyone.`);
+  return values;
 }
 
 const list = (value: string) =>

@@ -8,7 +8,12 @@ const LOCAL_EMAIL = "local@localhost";
 /** Development only: every request is the same local admin, with no sign-in. loadConfig keeps it out of production. */
 export function singleUserIdentify(db: Database): Identify {
   let local: Promise<User> | undefined;
-  return () => (local ??= ensureLocalUser(db));
+  return () =>
+    (local ??= ensureLocalUser(db).catch((error: unknown) => {
+      // Not cached: the database may simply not be ready yet on the first request.
+      local = undefined;
+      throw error;
+    }));
 }
 
 async function ensureLocalUser(db: Database): Promise<User> {
