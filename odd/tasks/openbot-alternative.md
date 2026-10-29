@@ -41,8 +41,11 @@ Cita: «es ahí donde viven los hilos y la memoria».
 Respuesta del usuario (2026-10-29): «una persona por instancia».
 - Cada instancia sirve a una única persona; otra persona levanta su propia instancia.
 - Nadie más que esa persona puede usar la API de la instancia.
-- Cómo se autentica esa persona cuando la instancia es accesible desde fuera: decisión pendiente del usuario (ver L22).
-- Check: tests de autenticación que prueban que solo la dueña o el dueño de la instancia entra.
+- Autenticación (decisión del usuario en L23): «OIDC con un solo email». Se reutiliza el OIDC de T7 (PKCE, state y nonce, sesiones en Postgres, `email_verified` y `OIDC_TRUST_UNVERIFIED_EMAIL`). Con `OIDC_ISSUER` configurado, `OWNER_EMAIL` es obligatorio y solo entra ese email; cualquier otra identidad recibe 403.
+- La comprobación se repite en cada petición: si `OWNER_EMAIL` cambia, las sesiones del email anterior dejan de valer.
+- Desaparecen los roles (`admin`/`member`), `ADMIN_EMAILS` y `OIDC_ALLOWED_DOMAINS`. Quien inicia sesión es la dueña o el dueño y puede registrar bots.
+- `SINGLE_USER=true` se mantiene para desarrollo, igual que antes (exige `NODE_ENV=development`).
+- Check: tests de autenticación que prueban que solo entra `OWNER_EMAIL`, que se rechaza cualquier otro email y que, si cambia `OWNER_EMAIL`, las sesiones anteriores dejan de valer.
 
 **S6 — Gateway de herramientas con política y auditoría.**
 - Toda llamada a herramienta del bot integrado pasa por un gateway que decide (allow/deny por regla) y registra una fila de auditoría antes de actuar.
@@ -72,7 +75,7 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 | T7 | S5 | inline | [x] Autenticación OIDC, roles, modo usuario único solo en desarrollo. Commits: (a) sesiones + `SINGLE_USER`, (b) OIDC, (c) roles + `/api/bots`, arreglo de colisión de email | 71fbca3, 3de4e13, 8d13cf6, 50bc212 |
 | T8 | S2, S4 | delegada (motivo: límite de contexto de la sesión padre) | [x] App web: lista de hilos, chat con streaming, memorias | 0dd8636 |
 | T9 | S7, S8 | inline | [x] Dockerfile + compose completo, README honesto, LICENSE MIT | 7759cb7, 7152fac, eb0463f |
-| T10 | S5 | inline | [ ] Adaptar la auth a una persona por instancia (decisión pendiente del usuario) | |
+| T10 | S5 | delegada (motivo: límite de contexto de la sesión padre) | [ ] Auth para una persona por instancia: OIDC con `OWNER_EMAIL`, sin roles | |
 
 ## Log
 
@@ -174,3 +177,5 @@ El stack de prueba (proyecto `personalbot-s7`) se desmontó con su volumen.
 Recomendación: un puerto `CodeSandbox` con el adaptador 3 por defecto y el 1 como opcional, ambos detrás del gateway de T6 (política + auditoría). Sin implementar.
 
 **L22** Cambio de requisito del usuario (2026-10-29), literal: «tengo una duda, personalBot es para ser usado por solo una perosna, otra persona sería otra instancia del bot» y, a la pregunta «¿una persona por instancia o equipo/empresa?»: «una persona por instancia». Esto sustituye la respuesta «Equipo/empresa» de L2. S5 está reescrita. T7 queda invalidada en parte: los roles, `ADMIN_EMAILS`, `OIDC_ALLOWED_DOMAINS`, el enlace de cuentas y la limitación de `SINGLE_USER` a desarrollo ya no responden al requisito. Se abre T10 para adaptarlo. La memoria por persona y el aislamiento por `owner_id` siguen siendo correctos con una sola persona y no hace falta tocarlos. La cadena de PRs queda en espera hasta que se decida T10. Pendiente del usuario: cómo se autentica la persona.
+
+**L23** Decisión del usuario sobre la autenticación: «OIDC con un solo email (Recomendado)». S5 queda actualizada. T10 se delega por el límite de contexto de la sesión padre. Risk: item 2 (auth) y 1 (migración que elimina la columna `users.role`; todavía no hay datos desplegados).
