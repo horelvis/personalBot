@@ -62,8 +62,8 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 
 | ID | Specs | Ruta | Estado | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | S1, S7 | inline | [x] Andamiaje: workspaces, TS, Vitest, Docker Compose de Postgres, esquema Drizzle + migraciones, config que solo exige `DATABASE_URL` | ver L5 |
-| T2 | S2 | inline | [ ] Store de hilos/mensajes con aislamiento por usuario y bloqueo por hilo | |
+| T1 | S1, S7 | inline | [x] Andamiaje: workspaces, TS, Vitest, Docker Compose de Postgres, esquema Drizzle + migraciones, config que solo exige `DATABASE_URL` | 415b90e |
+| T2 | S2 | inline | [x] Store de hilos/mensajes con aislamiento por usuario y bloqueo por hilo | ver L6 |
 | T3 | S4, S2 | inline | [ ] Relay AG-UI: `POST /api/threads/:id/runs` → bot por URL, SSE al navegador, persistencia | |
 | T4 | S4 | inline | [ ] Bot integrado AG-UI con modelo configurable | |
 | T5 | S3 | inline | [ ] Memoria: store, herramientas `remember`/`recall`, inyección en contexto | |
@@ -84,3 +84,5 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 **L4** Supuestos (reversibles): Docker no está instalado todavía en esta Mac, así que los tests usan PGlite y el arranque con Docker se verifica cuando esté disponible. El bot integrado usa Claude por defecto mediante el SDK de Anthropic; otros proveedores llegan como bots AG-UI.
 
 **L5** T1: RED observado (`tests/config.test.ts` y `tests/health.test.ts` fallaban porque faltaban los módulos). GREEN: `npx vitest run` → 2 archivos y 4 tests pasan; `npx tsc --noEmit` → exit 0; `grep -rli copilotkit` fuera de `odd/` → sin coincidencias. Node 26 ejecuta TS directamente (sin `tsx`). Pendiente de S7: `docker compose up` no se ha verificado porque Docker no está instalado.
+
+**L6** T2: RED observado (faltaba `src/threads/store.ts`). Primer GREEN con un fallo real: el orden de `list` empataba porque PGlite solo tiene precisión de milisegundos (comprobado: `now()` repite `22:27:24.594`). Solución: el store usa un único reloj inyectable para `created_at`/`updated_at`, y el test le pasa un reloj que avanza. `npx vitest run` → 10/10 tests en 3 ejecuciones seguidas; `tsc` → exit 0. Specs cubiertas: S2 (persistencia tras una nueva instancia, upsert por id, aislamiento entre usuarios, un solo run por hilo y recuperación de bloqueos abandonados).
