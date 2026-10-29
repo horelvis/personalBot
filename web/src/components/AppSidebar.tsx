@@ -41,9 +41,10 @@ export function AppSidebar({ me, tab, onTab, onSignOut, children }: AppSidebarPr
         </nav>
         <div className="flex h-10 items-center gap-2 px-2">
           <UserAvatar me={me} />
-          <span className="min-w-0 flex-1 truncate text-sm tracking-tight" title={me.name ?? me.email}>
-            {me.name ? `${me.name} · ` : ""}
-            <span>{me.email}</span>
+          {/* Name over email, as two lines, so the email is not cut off in a 16rem sidebar. */}
+          <span className="flex min-w-0 flex-1 flex-col leading-tight" title={me.email}>
+            {me.name ? <span className="truncate text-sm font-medium tracking-tight">{me.name}</span> : null}
+            <span className="truncate text-xs text-muted-foreground">{me.email}</span>
           </span>
           <Button variant="ghost" size="sm" onClick={onSignOut}>
             Sign out

@@ -41,10 +41,10 @@ Supuestos confirmados por el usuario en L5:
 
 | ID | Specs | Ruta | Estado | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | S1, S2, S4 | inline | [x] Base visual: Tailwind 4, tokens de `theme.css`, Inter, primitivas `ui` copiadas con atribución | 64e9db1 |
-| T2 | S1, S3 | inline | [x] Estructura: sidebar de la app con navegación, hilos y usuario; formulario de nuevo hilo | 811ee53 |
-| T3 | S1, S3 | inline | [x] Chat: mensajes y caja de mensaje con el estilo de openbot | b9181d5 |
-| T4 | S1, S3 | inline | [x] Memorias e inicio de sesión | 73d1aba |
+| T1 | S1, S2, S4 | inline | [x] Base visual: Tailwind 4, tokens de `theme.css`, Inter, primitivas `ui` copiadas con atribución | cb59715 |
+| T2 | S1, S3 | inline | [x] Estructura: sidebar de la app con navegación, hilos y usuario; formulario de nuevo hilo | 9bc7fbc |
+| T3 | S1, S3 | inline | [x] Chat: mensajes y caja de mensaje con el estilo de openbot | 469eb51 |
+| T4 | S1, S3 | inline | [x] Memorias e inicio de sesión | fdd0f9d |
 | T5 | S1–S4 | inline | [ ] Verificación: tests, typecheck, grep de `copilotkit`, capturas comparadas con openbot | |
 
 ## Log
@@ -95,3 +95,10 @@ Siguiente: T4.
 - El CSS antiguo queda eliminado del todo: `styles.css` solo importa Tailwind, Inter y `theme.css`.
 - Checks: `tsc` exit 0, 8/8 tests de web, `vite build` correcto. Sin comportamiento nuevo: no hay RED.
 Siguiente: T5 (verificación, con verificador independiente por el item 5 de riesgo).
+
+**L10** T5 (en curso): tras el rebase sobre `ae1aaac` (arreglo del gateway, PR #17), los commits de T1–T4 pasan a ser `cb59715`, `9bc7fbc`, `469eb51` y `fdd0f9d`; la tabla ya está corregida. openbot no publica capturas y su app no arranca sin CopilotKit Intelligence, así que la comparación lado a lado de S1 se hace contra su código (clases y tokens), más capturas de personalBot en claro y oscuro hechas con Chrome headless.
+
+Petición del usuario, literal:
+> arregla el email cortado y el select desalineado
+
+Arreglado: en el pie de la barra, el nombre y el email van en dos líneas (el email en `text-xs`, sin cortar «local@localhost»); el `<select>` usa `appearance-none` con `pl-2.5` y un chevron de Tabler dibujado, así que su texto queda alineado con el del `Input`. Checks: `tsc` exit 0, 8/8 tests de web, capturas revisadas en claro y oscuro.

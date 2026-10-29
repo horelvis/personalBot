@@ -11,8 +11,10 @@ interface NewThreadFormProps {
 }
 
 // A native <select> drawn with the Input primitive's classes: openbot's Select is a Base UI popup.
+// `appearance-none` drops the browser's own inner padding and arrow, so the text lines up with the
+// Input below it; the chevron is drawn instead.
 const selectClasses =
-  "h-9 w-full min-w-0 rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+  "h-9 w-full min-w-0 appearance-none rounded-lg border border-input bg-transparent py-1 pr-8 pl-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
 
 export function NewThreadForm({ bots, disabled, onCreate }: NewThreadFormProps) {
   const [botId, setBotId] = useState("");
@@ -30,13 +32,19 @@ export function NewThreadForm({ bots, disabled, onCreate }: NewThreadFormProps) 
     <form className="flex flex-col gap-2" onSubmit={submit}>
       <Label className="flex-col items-stretch gap-1.5 text-muted-foreground">
         Bot
-        <select className={selectClasses} value={chosen} onChange={(event) => setBotId(event.target.value)}>
-          {bots.map((bot) => (
-            <option key={bot.id} value={bot.id} title={bot.description ?? undefined}>
-              {bot.name}
-            </option>
-          ))}
-        </select>
+        <span className="relative">
+          <select className={selectClasses} value={chosen} onChange={(event) => setBotId(event.target.value)}>
+            {bots.map((bot) => (
+              <option key={bot.id} value={bot.id} title={bot.description ?? undefined}>
+                {bot.name}
+              </option>
+            ))}
+          </select>
+          {/* Tabler's chevron-down. */}
+          <svg aria-hidden="true" className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9l6 6l6 -6" />
+          </svg>
+        </span>
       </Label>
       <Label className="flex-col items-stretch gap-1.5 text-muted-foreground">
         Title
