@@ -82,7 +82,7 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 | T6 | S6 | inline | [x] Gateway de herramientas: política + auditoría | 11a3e05 |
 | T7 | S5 | inline | [x] Autenticación OIDC, roles, modo usuario único solo en desarrollo. Commits: (a) sesiones + `SINGLE_USER`, (b) OIDC, (c) roles + `/api/bots`, arreglo de colisión de email | 71fbca3, 3de4e13, 8d13cf6, 50bc212 |
 | T8 | S2, S4 | delegada (motivo: límite de contexto de la sesión padre) | [x] App web: lista de hilos, chat con streaming, memorias | 0dd8636 |
-| T9 | S7, S8 | inline | [ ] Dockerfile + compose completo, README honesto, LICENSE MIT | |
+| T9 | S7, S8 | inline | [x] Dockerfile + compose completo, README honesto, LICENSE MIT | 7759cb7, 7152fac, eb0463f |
 
 ## Log
 
@@ -152,3 +152,17 @@ T7 queda cerrada. **Siguiente: T8** (app web).
 - `/api/me` no reintenta tras un error que no sea 401.
 
 Risk: item 5 (dependencias nuevas y un workspace nuevo en el lockfile raíz). **Siguiente: T9.**
+
+**L19** T9:
+- `7759cb7`: el servidor sirve `STATIC_DIR`.
+- `7152fac`: Dockerfile de una sola imagen, servicio `app` en el compose, LICENSE MIT, campo `license` en los `package.json` y README sin CTAs.
+
+Verificador independiente de T8 y T9:
+- S1, S2, S4 y S8 pass.
+- S7 pass por lectura: `npm ci --workspace server --omit=dev` funciona en una copia aparte, y el arranque de producción sin Docker funciona contra `pglite-socket` (migraciones, `/health`, HTML, `/api/me` 401).
+- `docker compose config` y el arranque con Docker siguen sin probarse, porque Docker no está instalado.
+- Blocker: con `STATIC_DIR`, un GET con sesión a una ruta `/api` desconocida devolvía `index.html` con 200 en vez de 404. Arreglado en `eb0463f`: RED → GREEN (85/85), y la salida es idéntica a la de sin `STATIC_DIR`.
+
+Del mismo verificador se aplicaron dos avisos: Postgres publicado solo en `127.0.0.1`, y `PORT` respetado en los puertos del compose y en el `HEALTHCHECK`. Pendiente: la contraseña de Postgres está fija en el compose.
+
+Todas las tareas T1–T9 están completas. Pendiente del usuario: push y PR.
