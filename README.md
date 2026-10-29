@@ -62,6 +62,8 @@ Every setting is an environment variable; `.env.example` lists them all.
 
 With neither OIDC nor `SINGLE_USER` set, the server still starts, but the API admits nobody.
 
+`ADMIN_EMAILS` and `OIDC_ALLOWED_DOMAINS` belong to an earlier team version and have no effect. If either is set, the server warns at startup.
+
 ## API
 
 All `/api` routes need a signed-in session.

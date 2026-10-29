@@ -39,6 +39,7 @@ const builtinAgents: BuiltinAgents = {
 
 const sessions = createSessionStore(db);
 const identify = chooseIdentify(config, { db, sessions });
+for (const warning of config.warnings) console.warn(warning);
 if (config.singleUser) console.warn("SINGLE_USER=true: every request is the local person. Development only.");
 else if (!config.oidc) console.warn("No sign-in configured: set OIDC_ISSUER (or SINGLE_USER=true in development). The API admits nobody.");
 const auth = authRoutes({
