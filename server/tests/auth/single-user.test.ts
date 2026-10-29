@@ -10,11 +10,11 @@ beforeEach(async () => {
 });
 
 describe("single-user development mode", () => {
-  it("signs every request in as the same local admin without any login", async () => {
+  it("signs every request in as the same local person without any login", async () => {
     const app = createApp({ db, identify: singleUserIdentify(db) });
     const first = await (await app.request("/api/me")).json();
     const second = await (await app.request("/api/me")).json();
-    expect(first).toMatchObject({ email: "local@localhost", role: "admin" });
+    expect(first).toEqual({ id: expect.any(String), email: "local@localhost", name: "Local" });
     expect(second).toEqual(first);
   });
 

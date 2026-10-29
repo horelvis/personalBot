@@ -2,7 +2,6 @@ export interface Me {
   id: string;
   email: string;
   name: string | null;
-  role: "admin" | "member";
 }
 
 export interface Bot {

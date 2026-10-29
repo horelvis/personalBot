@@ -57,6 +57,13 @@
       "when": 1793227641729,
       "tag": "0007_oidc_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793261064128,
+      "tag": "0008_drop_user_roles",
+      "breakpoints": true
     }
   ]
 }

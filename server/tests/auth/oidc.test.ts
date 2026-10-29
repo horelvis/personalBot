@@ -18,15 +18,15 @@ beforeEach(async () => {
   idp = await createFakeIdp();
 });
 
-function appWith({ allowedDomains = ["example.com"] as string[] | "*", adminEmails = [] as string[], trustUnverifiedEmail = false, fetch = idp.fetch } = {}) {
+function appWith({ ownerEmail = "ana@example.com", trustUnverifiedEmail = false, fetch = idp.fetch } = {}) {
   const store = createSessionStore(db);
   const oidc = createOpenIdProvider(
     { issuer: ISSUER, clientId: CLIENT_ID, redirectUri: "http://localhost:3001/auth/callback" },
     { fetch },
   );
-  const access = { allowedDomains, adminEmails, trustUnverifiedEmail };
+  const access = { ownerEmail, trustUnverifiedEmail };
   const auth = authRoutes({ sessions: store, secureCookies: false, oidc, db, access, afterSignIn: "/" });
-  return createApp({ db, identify: sessionIdentify(store, { adminEmails }), auth });
+  return createApp({ db, identify: sessionIdentify(store, { ownerEmail }), auth });
 }
 
 function cookiesFrom(response: Response): string {
@@ -66,7 +66,7 @@ describe("OIDC sign-in", () => {
     expect(login.headers.getSetCookie().join()).toMatch(/HttpOnly/);
   });
 
-  it("signs a new person in as a member and opens a session", async () => {
+  it("signs the owner in and opens a session", async () => {
     const app = appWith();
     const callback = await signIn(app, { sub: "u-1", email: "ana@example.com", email_verified: true, name: "Ana" });
 
@@ -74,33 +74,33 @@ describe("OIDC sign-in", () => {
     expect(callback.headers.get("location")).toBe("/");
     expect(callback.headers.getSetCookie().join()).toContain(`${SESSION_COOKIE}=`);
     const response = await me(app, callback);
-    expect(await response.json()).toMatchObject({ email: "ana@example.com", name: "Ana", role: "member" });
+    expect(await response.json()).toEqual({ id: expect.any(String), email: "ana@example.com", name: "Ana" });
   });
 
-  it("makes people listed in ADMIN_EMAILS admins", async () => {
-    const app = appWith({ adminEmails: ["boss@example.com"] });
-    const callback = await signIn(app, { sub: "u-2", email: "Boss@Example.com" });
-    expect(await (await me(app, callback)).json()).toMatchObject({ role: "admin" });
-  });
-
-  it("keeps the same person when their email changes at the provider", async () => {
+  it("matches OWNER_EMAIL whatever the case the provider sends", async () => {
     const app = appWith();
-    const first = await (await me(app, await signIn(app, { sub: "u-1", email: "ana@example.com" }))).json();
-    const second = await (await me(app, await signIn(app, { sub: "u-1", email: "ana.garcia@example.com" }))).json();
+    const callback = await signIn(app, { sub: "u-1", email: "Ana@Example.COM" });
+    expect(callback.status).toBe(302);
+    expect((await me(app, callback)).status).toBe(200);
+  });
+
+  it("keeps the same person when their email changes at the provider and OWNER_EMAIL follows it", async () => {
+    const before = appWith();
+    const first = await (await me(before, await signIn(before, { sub: "u-1", email: "ana@example.com" }))).json();
+    const after = appWith({ ownerEmail: "ana.garcia@example.com" });
+    const second = await (await me(after, await signIn(after, { sub: "u-1", email: "ana.garcia@example.com" }))).json();
     expect(second).toMatchObject({ id: first.id, email: "ana.garcia@example.com" });
   });
 
-  it("refuses accounts outside OIDC_ALLOWED_DOMAINS and creates nobody", async () => {
-    const callback = await signIn(appWith(), { sub: "u-3", email: "eve@gmail.com" });
+  it.each([
+    ["another person of the same domain", "luis@example.com"],
+    ["someone from another domain", "eve@gmail.com"],
+  ])("refuses %s with 403 and creates no user and no session", async (_, email) => {
+    const callback = await signIn(appWith(), { sub: "u-3", email });
     expect(callback.status).toBe(403);
     expect(await callback.text()).toContain("not allowed to sign in");
     expect(await db.select().from(users)).toEqual([]);
     expect(await db.select().from(sessions)).toEqual([]);
-  });
-
-  it("admits any domain with '*'", async () => {
-    const callback = await signIn(appWith({ allowedDomains: "*" }), { sub: "u-3", email: "eve@gmail.com" });
-    expect(callback.status).toBe(302);
   });
 
   it("refuses an email the provider says is not verified", async () => {
@@ -134,7 +134,7 @@ describe("OIDC sign-in", () => {
       { issuer: ISSUER, clientId: CLIENT_ID, redirectUri: "http://localhost:3001/auth/callback" },
       { fetch: async (url, options) => (down ? Promise.reject(new Error("ECONNREFUSED")) : idp.fetch(url, options)) },
     );
-    const app = createApp({ db, identify: sessionIdentify(store), auth: authRoutes({ sessions: store, secureCookies: false, oidc, db, access: { allowedDomains: "*", adminEmails: [], trustUnverifiedEmail: false } }) });
+    const app = createApp({ db, identify: sessionIdentify(store), auth: authRoutes({ sessions: store, secureCookies: false, oidc, db, access: { ownerEmail: "ana@example.com", trustUnverifiedEmail: false } }) });
 
     const failed = await app.request("/auth/login");
     expect(failed.status).toBe(502);
@@ -146,7 +146,8 @@ describe("OIDC sign-in", () => {
   it("refuses, without an error page, an email change that collides with another account", async () => {
     const app = appWith();
     await signIn(app, { sub: "u-1", email: "ana@example.com" });
-    await signIn(app, { sub: "u-2", email: "luis@example.com" });
+    const asLuis = appWith({ ownerEmail: "luis@example.com" });
+    expect((await signIn(asLuis, { sub: "u-2", email: "luis@example.com" })).status).toBe(302);
     const callback = await signIn(app, { sub: "u-2", email: "ana@example.com" });
     expect(callback.status).toBe(403);
     expect((await db.select().from(users).where(eq(users.oidcSubject, "u-2")))[0]?.email).toBe("luis@example.com");
@@ -173,16 +174,8 @@ describe("OIDC sign-in", () => {
     expect(await db.select().from(users)).toHaveLength(1);
   });
 
-  it("admits an ADMIN_EMAILS address outside the allowed domains, and demotes it once removed", async () => {
-    const asAdmin = appWith({ adminEmails: ["boss@partner.org"] });
-    expect(await (await me(asAdmin, await signIn(asAdmin, { sub: "u-5", email: "boss@partner.org" }))).json()).toMatchObject({ role: "admin" });
-
-    const removed = appWith({ allowedDomains: ["partner.org"] });
-    expect(await (await me(removed, await signIn(removed, { sub: "u-5", email: "boss@partner.org" }))).json()).toMatchObject({ role: "member" });
-  });
-
   it("signs the same new person in from two tabs at once without an error", async () => {
-    const app = appWith();
+    const app = appWith({ ownerEmail: "new@example.com" });
     const [first, second] = await Promise.all([
       signIn(app, { sub: "u-7", email: "new@example.com" }),
       signIn(app, { sub: "u-7", email: "new@example.com" }),
@@ -194,7 +187,7 @@ describe("OIDC sign-in", () => {
   it("scopes the login cookie to the callback path, also under a PUBLIC_URL prefix", async () => {
     const store = createSessionStore(db);
     const oidc = createOpenIdProvider({ issuer: ISSUER, clientId: CLIENT_ID, redirectUri: "https://example.com/bot/auth/callback" }, { fetch: idp.fetch });
-    const app = createApp({ db, identify: sessionIdentify(store), auth: authRoutes({ sessions: store, secureCookies: true, oidc, db, access: { allowedDomains: "*", adminEmails: [], trustUnverifiedEmail: false } }) });
+    const app = createApp({ db, identify: sessionIdentify(store), auth: authRoutes({ sessions: store, secureCookies: true, oidc, db, access: { ownerEmail: "ana@example.com", trustUnverifiedEmail: false } }) });
     const login = await app.request("/auth/login");
     expect(login.headers.getSetCookie().join()).toMatch(/Path=\/bot\/auth;.*Secure/);
   });
@@ -205,17 +198,20 @@ describe("OIDC sign-in", () => {
     expect((await signIn(appWith({ trustUnverifiedEmail: true }), claims)).status).toBe(302);
   });
 
-  it("drops admin rights from open sessions as soon as the email leaves ADMIN_EMAILS", async () => {
-    const before = appWith({ adminEmails: ["boss@example.com"] });
-    const callback = await signIn(before, { sub: "u-2", email: "boss@example.com" });
-    const after = appWith({ adminEmails: [] });
-    expect(await (await me(after, callback)).json()).toMatchObject({ role: "member" });
+  it("ends the previous owner's open sessions as soon as OWNER_EMAIL changes", async () => {
+    const before = appWith();
+    const callback = await signIn(before, { sub: "u-1", email: "ana@example.com" });
+    expect((await me(before, callback)).status).toBe(200);
+    const after = appWith({ ownerEmail: "luis@example.com" });
+    expect((await me(after, callback)).status).toBe(401);
     const register = await after.request("/api/bots", {
       method: "POST",
       headers: { cookie: cookiesFrom(callback), "content-type": "application/json" },
       body: JSON.stringify({ id: "x", name: "X", url: "https://agents.example.com/x" }),
     });
-    expect(register.status).toBe(403);
+    expect(register.status).toBe(401);
+    const listed = await before.request("/api/bots", { headers: { cookie: cookiesFrom(callback) } });
+    expect(await listed.json()).toEqual([]);
   });
 
   it("answers 502, not 400, when the provider fails during the callback", async () => {

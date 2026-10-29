@@ -21,7 +21,7 @@ export function Header({ me, tab, onTab, onSignOut }: HeaderProps) {
           Memories
         </button>
       </nav>
-      <span className="who" title={me.role}>
+      <span className="who">
         {me.name ? `${me.name} · ` : ""}
         <span>{me.email}</span>
       </span>

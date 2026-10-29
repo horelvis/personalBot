@@ -27,7 +27,17 @@ describe("sessions", () => {
     const token = await store.create(ana.id);
     const response = await appWith(store).request("/api/me", withCookie(token));
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ id: ana.id, email: "ana@example.com", role: "member" });
+    expect(await response.json()).toEqual({ id: ana.id, email: "ana@example.com", name: null });
+  });
+
+  it("admits a session only while its email is OWNER_EMAIL, whatever the case it was stored in", async () => {
+    const store = createSessionStore(db);
+    const luis = await createUser(db, "Luis@Example.com");
+    const ownerOnly = (ownerEmail: string) =>
+      createApp({ db, identify: sessionIdentify(store, { ownerEmail }), auth: authRoutes({ sessions: store, secureCookies: false }) });
+    const token = await store.create(luis.id);
+    expect((await ownerOnly("luis@example.com").request("/api/me", withCookie(token))).status).toBe(200);
+    expect((await ownerOnly("ana@example.com").request("/api/me", withCookie(token))).status).toBe(401);
   });
 
   it("answers 401 without a cookie, with an unknown token and with an expired session", async () => {

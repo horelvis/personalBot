@@ -7,7 +7,7 @@ import { MemoriesContainer } from "../src/containers/MemoriesContainer.tsx";
 import { ThreadsContainer } from "../src/containers/ThreadsContainer.tsx";
 import { event, fakeFetch, json, sse } from "./fake-fetch.ts";
 
-const me = { id: "u1", email: "ada@example.com", name: "Ada", role: "member" };
+const me = { id: "u1", email: "ada@example.com", name: "Ada" };
 const thread = { id: "t1", botId: "assistant", title: "Plans", createdAt: "2026-10-01T00:00:00Z", updatedAt: "2026-10-01T00:00:00Z" };
 
 describe("App", () => {
