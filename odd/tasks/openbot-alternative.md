@@ -81,7 +81,7 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 | T5 | S3 | inline | [x] Memoria: store, herramientas `remember`/`recall`, inyección en contexto | ffca3fc |
 | T6 | S6 | inline | [x] Gateway de herramientas: política + auditoría | 11a3e05 |
 | T7 | S5 | inline | [x] Autenticación OIDC, roles, modo usuario único solo en desarrollo. Commits: (a) sesiones + `SINGLE_USER`, (b) OIDC, (c) roles + `/api/bots`, arreglo de colisión de email | 71fbca3, 3de4e13, 8d13cf6, 50bc212 |
-| T8 | S2, S4 | inline | [ ] App web: lista de hilos, chat con streaming, memorias | |
+| T8 | S2, S4 | delegada (motivo: límite de contexto de la sesión padre) | [ ] App web: lista de hilos, chat con streaming, memorias | |
 | T9 | S7, S8 | inline | [ ] Dockerfile + compose completo, README honesto, LICENSE MIT | |
 
 ## Log
