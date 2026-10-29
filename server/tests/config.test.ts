@@ -38,7 +38,7 @@ describe("loadConfig", () => {
   });
 
   it("trusts unverified emails only when OIDC_TRUST_UNVERIFIED_EMAIL=true", () => {
-    const oidc = { DATABASE_URL: "postgres://x@localhost/x", OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", PUBLIC_URL: "http://l", OIDC_ALLOWED_DOMAINS: "*" };
+    const oidc = { DATABASE_URL: "postgres://x@localhost/x", OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", PUBLIC_URL: "http://l", OWNER_EMAIL: "ana@example.com" };
     expect(loadConfig(oidc).oidc?.trustUnverifiedEmail).toBe(false);
     expect(loadConfig({ ...oidc, OIDC_TRUST_UNVERIFIED_EMAIL: "true" }).oidc?.trustUnverifiedEmail).toBe(true);
   });
@@ -50,7 +50,7 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...base, OIDC_ISSUER: "https://idp.test", OIDC_CLIENT_ID: "c" })).toThrow(/PUBLIC_URL/);
     expect(() =>
       loadConfig({ ...base, OIDC_ISSUER: "https://idp.test", OIDC_CLIENT_ID: "c", PUBLIC_URL: "https://bot.example.com" }),
-    ).toThrow(/OIDC_ALLOWED_DOMAINS/);
+    ).toThrow(/OWNER_EMAIL is required when OIDC_ISSUER is set/);
 
     const config = loadConfig({
       ...base,
@@ -58,26 +58,24 @@ describe("loadConfig", () => {
       OIDC_CLIENT_ID: "c",
       OIDC_CLIENT_SECRET: "s",
       PUBLIC_URL: "https://bot.example.com/",
-      OIDC_ALLOWED_DOMAINS: "example.com, Example.org",
-      ADMIN_EMAILS: "Boss@example.com",
+      OWNER_EMAIL: " Ana@Example.com ",
     });
     expect(config.oidc).toEqual({
       issuer: "https://idp.test",
       clientId: "c",
       clientSecret: "s",
       redirectUri: "https://bot.example.com/auth/callback",
-      allowedDomains: ["example.com", "example.org"],
-      adminEmails: ["boss@example.com"],
+      ownerEmail: "ana@example.com",
       trustUnverifiedEmail: false,
     });
-    expect(loadConfig({ ...base, OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", PUBLIC_URL: "http://l", OIDC_ALLOWED_DOMAINS: "*" }).oidc?.allowedDomains).toBe("*");
   });
 
   it("keeps a path prefix of PUBLIC_URL and rejects malformed sign-in settings with a hint", () => {
-    const oidc = { DATABASE_URL: "postgres://x@localhost/x", OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", OIDC_ALLOWED_DOMAINS: "example.com" };
+    const oidc = { DATABASE_URL: "postgres://x@localhost/x", OIDC_ISSUER: "https://i", OIDC_CLIENT_ID: "c", OWNER_EMAIL: "ana@example.com" };
     expect(loadConfig({ ...oidc, PUBLIC_URL: "https://example.com/bot" }).oidc?.redirectUri).toBe("https://example.com/bot/auth/callback");
     expect(() => loadConfig({ ...oidc, PUBLIC_URL: "not a url" })).toThrow(/PUBLIC_URL/);
-    expect(() => loadConfig({ ...oidc, PUBLIC_URL: "https://example.com", OIDC_ALLOWED_DOMAINS: " , ," })).toThrow(/OIDC_ALLOWED_DOMAINS/);
+    expect(() => loadConfig({ ...oidc, PUBLIC_URL: "https://example.com", OWNER_EMAIL: "ana.example.com" })).toThrow(/OWNER_EMAIL is not an email address/);
+    expect(() => loadConfig({ ...oidc, PUBLIC_URL: "https://example.com", OWNER_EMAIL: "ana@example.com, luis@example.com" })).toThrow(/OWNER_EMAIL/);
   });
 });
 

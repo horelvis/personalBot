@@ -8,7 +8,6 @@ export const users = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     email: text("email").notNull().unique(),
     name: text("name"),
-    role: text("role", { enum: ["admin", "member"] }).notNull().default("member"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     // Who the person is at the OpenID provider; the email can change there, these do not.
     oidcIssuer: text("oidc_issuer"),

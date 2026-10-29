@@ -3,8 +3,8 @@ import { serve } from "@hono/node-server";
 import { createApp } from "./app.ts";
 import { createOpenIdProvider } from "./auth/oidc-client.ts";
 import { authRoutes } from "./auth/routes.ts";
-import { createSessionStore, sessionIdentify } from "./auth/sessions.ts";
-import { singleUserIdentify } from "./auth/single-user.ts";
+import { chooseIdentify } from "./auth/choose-identify.ts";
+import { createSessionStore } from "./auth/sessions.ts";
 import type { BuiltinAgents } from "./threads/routes.ts";
 import { createAssistant } from "./assistant/agent.ts";
 import { memoryTools } from "./assistant/memory-tools.ts";
@@ -38,8 +38,8 @@ const builtinAgents: BuiltinAgents = {
 };
 
 const sessions = createSessionStore(db);
-const identify = config.singleUser ? singleUserIdentify(db) : sessionIdentify(sessions, { adminEmails: config.oidc?.adminEmails });
-if (config.singleUser) console.warn("SINGLE_USER=true: every request is the local admin. Development only.");
+const identify = chooseIdentify(config, { db, sessions });
+if (config.singleUser) console.warn("SINGLE_USER=true: every request is the local person. Development only.");
 else if (!config.oidc) console.warn("No sign-in configured: set OIDC_ISSUER (or SINGLE_USER=true in development). The API admits nobody.");
 const auth = authRoutes({
   sessions,

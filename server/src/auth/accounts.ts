@@ -5,10 +5,8 @@ import type { User } from "./identify.ts";
 import type { OidcIdentity } from "./oidc.ts";
 
 export interface AccessPolicy {
-  /** Email domains allowed to sign in, or "*" for anyone the issuer authenticates. */
-  allowedDomains: string[] | "*";
-  /** Lower-case emails that sign in as admin; everyone else is a member. */
-  adminEmails: string[];
+  /** Lower-case email of the one person this instance serves; any other identity is refused. */
+  ownerEmail: string;
   /** Without it, only an email the provider marks email_verified: true can sign in. */
   trustUnverifiedEmail: boolean;
 }
@@ -19,11 +17,9 @@ export async function signInAccount(db: Database, identity: OidcIdentity, access
   if (!email || identity.emailVerified === false) return null;
   // An unverified email may be one the person merely typed in at the provider; it must not claim an account.
   if (identity.emailVerified !== true && !access.trustUnverifiedEmail) return null;
-  const domain = email.slice(email.lastIndexOf("@") + 1);
-  if (access.allowedDomains !== "*" && !access.allowedDomains.includes(domain) && !access.adminEmails.includes(email)) return null;
+  if (email !== access.ownerEmail.toLowerCase()) return null;
 
-  // ADMIN_EMAILS is the source of truth for the role, so removing someone from it demotes them on their next sign-in.
-  const profile = { email, name: identity.name ?? null, role: access.adminEmails.includes(email) ? ("admin" as const) : ("member" as const) };
+  const profile = { email, name: identity.name ?? null };
   // Accounts created by hand may keep mixed case; sign-in always compares lower case.
   const [sameEmail] = await db.select().from(users).where(eq(sql`lower(${users.email})`, email));
   const ownsEmail = sameEmail?.oidcIssuer === identity.issuer && sameEmail.oidcSubject === identity.subject;

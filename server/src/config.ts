@@ -3,7 +3,7 @@ export interface Config {
   port: number;
   /** The Claude model behind the built-in assistant. */
   assistantModel: string;
-  /** Development only: everyone is one local admin, with no sign-in. */
+  /** Development only: every request is one local person, with no sign-in. */
   singleUser: boolean;
   production: boolean;
   /** Directory of the built web app to serve, such as web/dist. */
@@ -17,9 +17,8 @@ export interface OidcConfig {
   clientId: string;
   clientSecret?: string;
   redirectUri: string;
-  /** Email domains allowed to sign in, or "*" for anyone the issuer authenticates. */
-  allowedDomains: string[] | "*";
-  adminEmails: string[];
+  /** Lower-case email of the one person this instance serves; nobody else signs in. */
+  ownerEmail: string;
   /** Accept an email the provider does not mark as verified, for providers such as Entra that never send email_verified. */
   trustUnverifiedEmail: boolean;
 }
@@ -59,16 +58,15 @@ function loadOidcConfig(environment: Environment): OidcConfig | undefined {
   };
   const clientId = required("OIDC_CLIENT_ID", "the client id registered at the provider.");
   const publicUrl = required("PUBLIC_URL", "the address people open, e.g. https://bot.example.com.");
-  // Required on purpose: with a public issuer such as Google, admitting everyone must be a choice.
-  const domains = required("OIDC_ALLOWED_DOMAINS", 'comma-separated email domains allowed to sign in, or "*" for anyone.');
+  // One person per instance: with a public issuer such as Google, nobody but this email may get in.
+  const ownerEmail = email("OWNER_EMAIL", required("OWNER_EMAIL", "the email of the one person this instance serves, e.g. ana@example.com."));
   const clientSecret = environment.OIDC_CLIENT_SECRET?.trim();
   return {
     issuer,
     clientId,
     ...(clientSecret ? { clientSecret } : {}),
     redirectUri: callbackUrl(publicUrl),
-    allowedDomains: domains === "*" ? "*" : nonEmpty("OIDC_ALLOWED_DOMAINS", list(domains)),
-    adminEmails: list(environment.ADMIN_EMAILS ?? ""),
+    ownerEmail,
     trustUnverifiedEmail: environment.OIDC_TRUST_UNVERIFIED_EMAIL === "true",
   };
 }
@@ -81,13 +79,7 @@ function callbackUrl(publicUrl: string): string {
   return new URL("auth/callback", base).href;
 }
 
-function nonEmpty(name: string, values: string[]): string[] {
-  if (!values.length) throw new Error(`${name} lists no domains. Use comma-separated domains, or "*" for anyone.`);
-  return values;
+function email(name: string, value: string): string {
+  if (!/^[^\s@,]+@[^\s@,]+$/.test(value)) throw new Error(`${name} is not an email address: ${value}. Use one email, e.g. ana@example.com.`);
+  return value.toLowerCase();
 }
-
-const list = (value: string) =>
-  value
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);

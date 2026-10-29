@@ -40,12 +40,12 @@ export function createSessionStore(db: Database, { now = () => new Date(), ttlMs
 
 export type SessionStore = ReturnType<typeof createSessionStore>;
 
-/** With adminEmails, the role follows that list on every request, so removing someone takes effect at once. */
-export function sessionIdentify(store: SessionStore, { adminEmails }: { adminEmails?: string[] } = {}): Identify {
+/** With ownerEmail, it is checked on every request, so changing OWNER_EMAIL ends the previous owner's sessions at once. */
+export function sessionIdentify(store: SessionStore, { ownerEmail }: { ownerEmail?: string } = {}): Identify {
   return async (c) => {
     const token = getCookie(c, SESSION_COOKIE);
     const user = token ? await store.resolve(token) : null;
-    if (!user || !adminEmails) return user;
-    return { ...user, role: adminEmails.includes(user.email.toLowerCase()) ? "admin" : "member" };
+    if (!user || ownerEmail === undefined) return user;
+    return user.email.toLowerCase() === ownerEmail.toLowerCase() ? user : null;
   };
 }

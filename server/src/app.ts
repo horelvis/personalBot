@@ -38,8 +38,8 @@ export function createApp({ db, identify, agentFetch, builtinAgents, auth, stati
     await next();
   });
   api.get("/me", (c) => {
-    const { id, email, name, role } = c.var.user;
-    return c.json({ id, email, name, role });
+    const { id, email, name } = c.var.user;
+    return c.json({ id, email, name });
   });
   api.route("/bots", botRoutes(db));
   api.route("/threads", threadRoutes(db, { agentFetch, builtinAgents }));
