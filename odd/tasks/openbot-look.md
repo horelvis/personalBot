@@ -42,8 +42,8 @@ Supuestos confirmados por el usuario en L5:
 | ID | Specs | Ruta | Estado | Commit |
 | --- | --- | --- | --- | --- |
 | T1 | S1, S2, S4 | inline | [x] Base visual: Tailwind 4, tokens de `theme.css`, Inter, primitivas `ui` copiadas con atribución | 64e9db1 |
-| T2 | S1, S3 | inline | [x] Estructura: sidebar de la app con navegación, hilos y usuario; formulario de nuevo hilo | |
-| T3 | S1, S3 | inline | [ ] Chat: mensajes y caja de mensaje con el estilo de openbot | |
+| T2 | S1, S3 | inline | [x] Estructura: sidebar de la app con navegación, hilos y usuario; formulario de nuevo hilo | 811ee53 |
+| T3 | S1, S3 | inline | [x] Chat: mensajes y caja de mensaje con el estilo de openbot | |
 | T4 | S1, S3 | inline | [ ] Memorias e inicio de sesión | |
 | T5 | S1–S4 | inline | [ ] Verificación: tests, typecheck, grep de `copilotkit`, capturas comparadas con openbot | |
 
@@ -84,3 +84,9 @@ Siguiente: T2.
 - El CSS antiguo queda limitado a `:where(.chat, .memories-page)` y `.button`, y se han borrado las reglas de cabecera, workspace e hilos.
 - Checks: `tsc` exit 0, 8/8 tests de web, `vite build` correcto.
 Siguiente: T3.
+
+**L8** T3: el chat sigue la vista de conversación de openbot. Columna `max-w-2xl` centrada. Los mensajes del usuario van en la burbuja `muted` alineada al final; los del bot en la `ghost`, a todo el ancho, con las clases de `ui/bubble.tsx` y `chat-transcript.tsx`. La caja de mensaje es el bloque `rounded-2xl` de `composer.tsx`, con el placeholder «Ask anything» y un botón de enviar redondo con el icono arrow-up de Tabler (SVG inline, sin añadir `@tabler/icons-react`) y `aria-label="Send"`. `ErrorBanner` usa `text-destructive`.
+- Fuera: `PromptArea` (menciones y comandos), adjuntos, dictado y animaciones de openbot; personalBot no tiene esas funciones.
+- Se borra el CSS antiguo del chat y `.visually-hidden`; ahora se usa `sr-only` de Tailwind.
+- Checks: `tsc` exit 0, 8/8 tests de web, `vite build` correcto. Sin comportamiento nuevo: no hay RED.
+Siguiente: T4.

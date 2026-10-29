@@ -4,11 +4,11 @@
 
 /*
  * Screen styles from before the openbot look. They read openbot's tokens so the app stays coherent
- * while T3-T4 move each screen onto the ui primitives and delete its rules here. In a layer, so
+ * while T4 moves the remaining screens onto the ui primitives and delete its rules here. In a layer, so
  * Tailwind utilities win over them.
  */
 @layer components {
-  :where(.chat, .memories-page) button, .button {
+  :where(.memories-page) button, .button {
     font: inherit;
     padding: 0.4rem 0.8rem;
     border: 1px solid var(--border);
@@ -18,10 +18,10 @@
     cursor: pointer;
     text-decoration: none;
   }
-  :where(.chat, .memories-page) button[type="submit"], .button { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
-  :where(.chat, .memories-page) button:disabled { opacity: 0.5; cursor: default; }
+  :where(.memories-page) button[type="submit"], .button { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+  :where(.memories-page) button:disabled { opacity: 0.5; cursor: default; }
 
-  :where(.chat, .memories-page) :is(input, textarea) {
+  :where(.memories-page) :is(input, textarea) {
     font: inherit;
     padding: 0.4rem;
     border: 1px solid var(--border);
@@ -29,22 +29,11 @@
     background: var(--card);
     color: var(--foreground);
   }
-  :where(.chat, .memories-page) label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; color: var(--muted-foreground); }
+  :where(.memories-page) label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; color: var(--muted-foreground); }
 
   .muted { color: var(--muted-foreground); }
-  .error { color: var(--destructive); margin: 0.5rem 0; }
-  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
   .sign-in { max-width: 24rem; margin: 20vh auto; text-align: center; padding: 0 1rem; }
-
-  .chat { display: flex; flex-direction: column; min-height: 0; padding: 1rem; }
-  .messages { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
-  .message { max-width: 70ch; padding: 0.5rem 0.8rem; border-radius: 8px; background: var(--card); border: 1px solid var(--border); }
-  .message p { margin: 0; white-space: pre-wrap; }
-  .message.user { align-self: flex-end; background: var(--secondary); }
-  .message.tool, .tool-call { font-size: 0.85rem; color: var(--muted-foreground); }
-  .composer { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-  .composer textarea { flex: 1; resize: vertical; }
 
   .memories-page { max-width: 48rem; margin: 0 auto; padding: 1rem; width: 100%; }
   .memory-form { display: flex; gap: 0.5rem; align-items: flex-end; }
