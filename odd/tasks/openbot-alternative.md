@@ -46,7 +46,11 @@ Respuesta del usuario: «Equipo/empresa».
   - La identidad es `issuer + sub` del ID token; el email solo se usa para mostrar y para las listas de acceso.
   - Por defecto no entra nadie: `OIDC_ALLOWED_DOMAINS` lista los dominios de email admitidos (`*` admite cualquier identidad del issuer). Así, un issuer público como Google no abre el servidor a cualquier cuenta.
   - `ADMIN_EMAILS` define quién es `admin` al iniciar sesión; el resto es `member`. Un email de `ADMIN_EMAILS` puede entrar aunque su dominio no esté en `OIDC_ALLOWED_DOMAINS`.
-  - Solo se rechaza `email_verified: false`. Si el claim falta, el email se da por bueno, porque proveedores como Microsoft Entra no lo envían.
+  - Solo entra un email con `email_verified: true`. Para proveedores que no envían el claim (Microsoft Entra), `OIDC_TRUST_UNVERIFIED_EMAIL=true` lo acepta. Decisión del usuario en L15.
+  - El rol se recalcula en cada petición a partir de `ADMIN_EMAILS`, así que quien sale de la lista pierde el rol de admin al momento, aunque tenga una sesión abierta.
+  - `SINGLE_USER=true` exige `NODE_ENV=development` explícito; con cualquier otro valor, o sin `NODE_ENV`, el servidor no arranca.
+  - Si el proveedor falla durante la callback, se responde 502; un error de protocolo (state, code o nonce) sigue dando 400.
+  - Riesgo aceptado: `POST /api/bots` admite cualquier URL http(s), también de red privada o loopback. Solo los admins pueden registrar bots.
   - Una cuenta creada antes del login (sin identidad OIDC) se enlaza una sola vez a la primera identidad que llega con su email. Una cuenta que ya tiene identidad nunca se reasigna, y un cambio de email que choca con otra cuenta se rechaza con 403.
   - Las sesiones viven en Postgres (cookie opaca `HttpOnly`, `SameSite=Lax` y `Secure` en producción; en la base solo se guarda el hash del token), así que se pueden revocar y no hace falta un secreto de firma.
   - Autorización por rol: `GET /api/bots` para cualquier miembro y `POST /api/bots` (registrar un bot AG-UI por URL) solo para `admin`.
@@ -124,3 +128,10 @@ Pendiente de decisión del usuario:
 - (c) `SINGLE_USER` solo se rechaza si `NODE_ENV` es exactamente `production`;
 - (d) un fallo de red en la callback responde 400 en vez de 5xx;
 - (e) `POST /api/bots` admite URLs de red privada o loopback (SSRF limitado a admins).
+
+**L15** Decisión del usuario sobre los puntos (a) a (e) de L14: «Aplicar las 5 (Recomendado)». Implementado en `8bb0c2a` con RED (6 tests) → GREEN (77/77), `tsc` exit 0:
+- (a) se exige `email_verified: true`, salvo con `OIDC_TRUST_UNVERIFIED_EMAIL=true`;
+- (b) el rol se recalcula en cada petición;
+- (c) `SINGLE_USER` necesita `NODE_ENV=development`. Esto endurece lo que pedía S5 («se niega a arrancar si `NODE_ENV=production`»): ahora también se niega con cualquier otro valor;
+- (d) se responde 502 cuando el proveedor falla en la callback. Un `TypeError` de red se distingue de los errores OAuth de openid-client;
+- (e) se acepta como riesgo y queda documentado en S5.
