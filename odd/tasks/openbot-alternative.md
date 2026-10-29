@@ -202,3 +202,13 @@ Avisos que quedan:
 **L26** Estrategia elegida por el usuario: «apilados contra main». Cadena de 13 PRs, cada uno en una rama `stack/NN-*` que apunta a un commit existente, sin reescribir historia: horelvis/personalBot #1–#13. #1 tiene base `main`; cada uno de los siguientes tiene como base la rama del anterior y pasará a `main` cuando se integre su padre. Se pidió `size:exception` para #5 (memoria, 661 líneas), #8 (OIDC, 518) y #11 (web, 1026), porque cada uno es un único commit con su código y sus tests. El merge queda en manos del usuario.
 
 **L27** 2026-10-29: el usuario integró en `main` la cadena completa. Los PRs #1–#13 se mergearon entre las 08:15 y las 08:16 UTC, y el #14 (`7215372`, «docs(odd): record stacked PR chain», que añadió L26) a las 08:24 UTC. El último commit es `a693d3c` y la feature está cerrada. Quedan abiertos los avisos de L24.
+
+**L28** 2026-10-29, aviso 2 de L24 (el owner recibe 403 si su cuenta ya estaba enlazada a otro `sub`). Opciones planteadas: re-enlace automático solo con email verificado, o re-enlace explícito con una variable. Decisión del usuario, literal:
+> la 1, re-enlace automático
+
+Con una persona por instancia, la fuente de confianza es `OWNER_EMAIL`: si el proveedor configurado marca `email_verified: true` para ese email, la cuenta del owner se re-enlaza a la nueva identidad (emisor + `sub`) y conserva sus hilos y memorias. Sin verificación (`OIDC_TRUST_UNVERIFIED_EMAIL`) sigue el 403, con un aviso en el log del servidor. Risk: item 2 (auth).
+
+**L29** Aviso 2 hecho en `42b84df`. Verificador independiente: sin blockers. Revisión RDD (lentes risk y reliability): aprobada, con acknowledgement hecho. Petición del usuario sobre los avisos de la revisión, literal:
+> corregir el fallo
+
+Arreglado aquí: los avisos de rechazo ya no escriben el email en el log (R1-001, dato personal). Dos tests nuevos fijan comportamiento que ya existía: `email_verified: false` nunca re-enlaza, ni siquiera con `OIDC_TRUST_UNVERIFIED_EMAIL`; y el re-enlace solo toca la cuenta de `OWNER_EMAIL`, nunca la de un owner anterior. R1-002 no aplica: `accounts.ts:20` rechaza cualquier email que no sea el del owner antes de llegar al re-enlace. RED: las comprobaciones del log fallan con el código anterior. Checks: server 94/94, `tsc` exit 0.

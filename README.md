@@ -58,7 +58,7 @@ Every setting is an environment variable; `.env.example` lists them all.
 | `SINGLE_USER` | no | `true` signs every request in as one local person. Refused unless `NODE_ENV=development`. |
 | `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | for sign-in | Your OpenID provider. The secret is optional for public clients. |
 | `PUBLIC_URL` | with OIDC | The address people open. Register `<PUBLIC_URL>/auth/callback` as the redirect URI. |
-| `OWNER_EMAIL` | with OIDC | The email of the one person this instance serves. Anyone else the provider signs in gets 403. It is checked on every request, so changing it ends the previous owner's sessions at once. |
+| `OWNER_EMAIL` | with OIDC | The email of the one person this instance serves. Anyone else the provider signs in gets 403. It is checked on every request, so changing it ends the previous owner's sessions at once. If the owner comes back under a new identity (another provider, or a recreated account), their account and its threads follow them, but only when the provider marks the email verified. |
 | `OIDC_TRUST_UNVERIFIED_EMAIL` | no | `true` accepts emails the provider does not mark as verified. Needed for providers that never send `email_verified`, such as Microsoft Entra. |
 | `STATIC_DIR` | no | Directory of the built web app to serve. The Docker image sets it. |
 
