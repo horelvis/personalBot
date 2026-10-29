@@ -44,7 +44,7 @@ Supuestos confirmados por el usuario en L5:
 | T1 | S1, S2, S4 | inline | [x] Base visual: Tailwind 4, tokens de `theme.css`, Inter, primitivas `ui` copiadas con atribución | 64e9db1 |
 | T2 | S1, S3 | inline | [x] Estructura: sidebar de la app con navegación, hilos y usuario; formulario de nuevo hilo | 811ee53 |
 | T3 | S1, S3 | inline | [x] Chat: mensajes y caja de mensaje con el estilo de openbot | b9181d5 |
-| T4 | S1, S3 | inline | [x] Memorias e inicio de sesión | |
+| T4 | S1, S3 | inline | [x] Memorias e inicio de sesión | 73d1aba |
 | T5 | S1–S4 | inline | [ ] Verificación: tests, typecheck, grep de `copilotkit`, capturas comparadas con openbot | |
 
 ## Log
