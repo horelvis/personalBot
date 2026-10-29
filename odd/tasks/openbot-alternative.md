@@ -166,3 +166,12 @@ Verificador independiente de T8 y T9:
 Del mismo verificador se aplicaron dos avisos: Postgres publicado solo en `127.0.0.1`, y `PORT` respetado en los puertos del compose y en el `HEALTHCHECK`. Pendiente: la contraseña de Postgres está fija en el compose.
 
 Todas las tareas T1–T9 están completas. Pendiente del usuario: push y PR.
+
+**L20** S7 verificado con Docker 29.9.2 y Compose v5.6.1:
+- `docker compose config` es válido.
+- `docker compose up --build` construye la imagen (392 MB, corre como el usuario `node`), Postgres pasa a healthy y la app también.
+- `/health` 200, `/` y `/threads/abc` 200 HTML, `/api/me` y `/api/unknown` 401, `POST /auth/logout` 204, y se aplicaron las 8 migraciones.
+- `SINGLE_USER=true` dentro de la imagen se niega a arrancar.
+- Un dato insertado sobrevive a `docker compose restart`.
+
+El stack de prueba (proyecto `personalbot-s7`) se desmontó con su volumen.
