@@ -108,3 +108,19 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 **L12** Arreglos tras T6: `98e9d6b` añade CHECK en Postgres a `tool_rules.effect` y `tool_audit.decision`, y deja `tool_audit.input` nullable. RED 3/3 → GREEN 41/41. RDD: `medium`, `under_budget` (queda pendiente en el tramo). El usuario pidió seguir en modo autónomo hasta que haga falta su intervención. T7: no hay ningún writer delegado (falta un motivo según el Writer trigger); se hace inline en tres commits. Risk: item 2 (auth) y 5 (dependencia nueva `openid-client` 6.8.8, de panva, con `jose` y `oauth4webapi`), así que habrá verificador independiente. Diseño hexagonal: un puerto `OidcProvider` con un adaptador sobre `openid-client` y un IdP falso en los tests. Supuestos de S5 anotados arriba.
 
 **L13** T7: RED observado en cada unidad (faltaban los módulos; un test de 502 y otro de colisión de email fallaron antes de su arreglo). GREEN: 66/66 tests, `tsc` exit 0, `npm audit --omit=dev` = 0. Sesiones en Postgres con hash SHA-256 del token y cookie `HttpOnly`, `SameSite=Lax` y `Secure` en producción. `SINGLE_USER=true` se rechaza con `NODE_ENV=production`. OIDC con `openid-client` (PKCE S256, state y nonce en una cookie `HttpOnly` de 10 minutos con path `/auth`); el proveedor caído devuelve 502. La callback se reconstruye sobre `redirectUri`. Los tests usan un IdP falso con `jose` que firma RS256 y comprueba PKCE. `POST /api/bots` es solo para admin y solo acepta URLs http(s); `GET /api/bots` oculta la URL a los miembros. Risk: item 2 (auth) y 5 (dependencia nueva). Verificador independiente: S5 y S1 pass, sin blockers. De sus avisos se arregló la colisión de email (devolvía 500); el resto quedó documentado como supuestos en S5. Queda pendiente: borrar las sesiones caducadas (las filas no se eliminan); `NODE_ENV` se compara exactamente con `production`. Sin servidor real de Postgres (no hay Docker) no se probó el arranque de punta a punta. **Siguiente:** revisión RDD del tramo `11a3e05..HEAD`, y después T8.
+
+**L14** Revisión RDD del tramo `11a3e05..cafc5f7` (lentes risk, resilience y reliability): aprobada, con acknowledgement hecho, y 16 avisos no bloqueantes. Arreglados en `ee2db8a` con RED → GREEN (73/73 tests, `tsc` exit 0):
+- el modo de usuario único ya no deja en caché un fallo de la base;
+- el insert de cuenta no falla ante el conflicto, por si dos primeros inicios de sesión llegan a la vez;
+- el email se busca con `lower()`;
+- `PUBLIC_URL` se valida, se respeta su prefijo de ruta y la cookie de login usa la ruta de la callback;
+- `OIDC_ALLOWED_DOMAINS` no puede quedar vacío;
+- las sesiones caducadas de la persona se borran al crear una nueva;
+- tests nuevos de enlace de cuenta previa, de admin fuera de los dominios admitidos y de degradación.
+
+Pendiente de decisión del usuario:
+- (a) aceptar un email sin el claim `email_verified` (riesgo de la clase nOAuth frente a la compatibilidad con Entra);
+- (b) un admin retirado de `ADMIN_EMAILS` conserva el rol hasta que vuelve a iniciar sesión (las sesiones duran 30 días);
+- (c) `SINGLE_USER` solo se rechaza si `NODE_ENV` es exactamente `production`;
+- (d) un fallo de red en la callback responde 400 en vez de 5xx;
+- (e) `POST /api/bots` admite URLs de red privada o loopback (SSRF limitado a admins).
