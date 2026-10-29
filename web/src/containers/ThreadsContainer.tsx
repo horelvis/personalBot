@@ -47,10 +47,10 @@ export function ThreadsContainer({ api, selectedId, onOpen }: ThreadsContainerPr
   }
 
   return (
-    <aside className="threads">
+    <div className="flex flex-col gap-4">
       <NewThreadForm bots={bots} disabled={creating} onCreate={create} />
       <ErrorBanner message={error} />
       <ThreadList threads={threads} selectedId={selectedId} onOpen={onOpen} />
-    </aside>
+    </div>
   );
 }

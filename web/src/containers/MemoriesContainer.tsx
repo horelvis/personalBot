@@ -46,12 +46,16 @@ export function MemoriesContainer({ api }: { api: Api }) {
   }
 
   return (
-    <section className="memories-page">
-      <h2>Memories</h2>
-      <p className="muted">Facts your bots keep about you. They can also add these themselves.</p>
-      <MemoryForm disabled={saving} onAdd={add} />
-      <ErrorBanner message={error} />
-      <MemoryList memories={memories} onDelete={remove} />
+    <section className="min-h-0 flex-1 overflow-y-auto">
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pt-12 pb-8">
+        <header className="flex flex-col gap-1">
+          <h2 className="text-2xl font-medium tracking-tight">Memories</h2>
+          <p className="text-sm text-muted-foreground">Facts your bots keep about you. They can also add these themselves.</p>
+        </header>
+        <MemoryForm disabled={saving} onAdd={add} />
+        <ErrorBanner message={error} />
+        <MemoryList memories={memories} onDelete={remove} />
+      </div>
     </section>
   );
 }

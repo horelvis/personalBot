@@ -50,10 +50,14 @@ export function ChatContainer({ api, threadId }: { api: Api; threadId: string })
   }
 
   return (
-    <section className="chat">
-      <MessageList messages={messages} />
-      <ErrorBanner message={error} />
-      <Composer value={draft} disabled={running} onChange={setDraft} onSubmit={send} />
+    <section className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <MessageList messages={messages} />
+      </div>
+      <div className="mx-auto w-full max-w-2xl shrink-0 px-4 pb-4">
+        <ErrorBanner message={error} />
+        <Composer value={draft} disabled={running} onChange={setDraft} onSubmit={send} />
+      </div>
     </section>
   );
 }
