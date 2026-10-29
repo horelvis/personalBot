@@ -1,95 +1,74 @@
-:root {
-  --bg: #f7f7f8;
-  --surface: #ffffff;
-  --text: #1c1c1f;
-  --muted: #6b6b75;
-  --border: #dedee3;
-  --accent: #3355ff;
-  --accent-text: #ffffff;
-  --user: #e8edff;
-  --error: #b42318;
-  font-family: system-ui, sans-serif;
-  color: var(--text);
-  background: var(--bg);
-}
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "./theme.css";
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #141417;
-    --surface: #1d1d21;
-    --text: #ececf1;
-    --muted: #9a9aa5;
-    --border: #33333a;
-    --accent: #7b93ff;
-    --accent-text: #0d0d10;
-    --user: #262c45;
-    --error: #ff8a80;
+/*
+ * Screen styles from before the openbot look. They read openbot's tokens so the app stays coherent
+ * while T2-T4 move each screen onto the ui primitives and delete its rules here. In a layer, so
+ * Tailwind utilities win over them.
+ */
+@layer components {
+  button, .button {
+    font: inherit;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card);
+    color: var(--foreground);
+    cursor: pointer;
+    text-decoration: none;
   }
-}
+  button[type="submit"], .button { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button[aria-pressed="true"], button[aria-current="true"] { border-color: var(--primary); }
 
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); }
+  input, select, textarea {
+    font: inherit;
+    padding: 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card);
+    color: var(--foreground);
+  }
+  label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; color: var(--muted-foreground); }
 
-button, .button {
-  font: inherit;
-  padding: 0.4rem 0.8rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-  text-decoration: none;
-}
-button[type="submit"], .button { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-button:disabled { opacity: 0.5; cursor: default; }
-button[aria-pressed="true"], button[aria-current="true"] { border-color: var(--accent); }
+  .muted { color: var(--muted-foreground); }
+  .error { color: var(--destructive); margin: 0.5rem 0; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
-input, select, textarea {
-  font: inherit;
-  padding: 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text);
-}
-label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; color: var(--muted); }
+  .sign-in { max-width: 24rem; margin: 20vh auto; text-align: center; padding: 0 1rem; }
 
-.muted { color: var(--muted); }
-.error { color: var(--error); margin: 0.5rem 0; }
-.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .app { display: flex; flex-direction: column; height: 100vh; }
+  .header { display: flex; align-items: center; gap: 1rem; padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); background: var(--card); }
+  .header nav { display: flex; gap: 0.4rem; }
+  .header .who { margin-left: auto; color: var(--muted-foreground); font-size: 0.9rem; }
 
-.sign-in { max-width: 24rem; margin: 20vh auto; text-align: center; padding: 0 1rem; }
+  .workspace { flex: 1; display: grid; grid-template-columns: 18rem 1fr; min-height: 0; }
+  .threads { border-right: 1px solid var(--border); padding: 1rem; overflow-y: auto; }
+  .new-thread { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+  .thread-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+  .thread-list button { width: 100%; text-align: left; }
 
-.app { display: flex; flex-direction: column; height: 100vh; }
-.header { display: flex; align-items: center; gap: 1rem; padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); background: var(--surface); }
-.header nav { display: flex; gap: 0.4rem; }
-.header .who { margin-left: auto; color: var(--muted); font-size: 0.9rem; }
+  .chat { display: flex; flex-direction: column; min-height: 0; padding: 1rem; }
+  .messages { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  .message { max-width: 70ch; padding: 0.5rem 0.8rem; border-radius: 8px; background: var(--card); border: 1px solid var(--border); }
+  .message p { margin: 0; white-space: pre-wrap; }
+  .message.user { align-self: flex-end; background: var(--secondary); }
+  .message.tool, .tool-call { font-size: 0.85rem; color: var(--muted-foreground); }
+  .composer { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+  .composer textarea { flex: 1; resize: vertical; }
 
-.workspace { flex: 1; display: grid; grid-template-columns: 18rem 1fr; min-height: 0; }
-.threads { border-right: 1px solid var(--border); padding: 1rem; overflow-y: auto; }
-.new-thread { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
-.thread-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
-.thread-list button { width: 100%; text-align: left; }
+  .memories-page { max-width: 48rem; margin: 0 auto; padding: 1rem; width: 100%; }
+  .memory-form { display: flex; gap: 0.5rem; align-items: flex-end; }
+  .memory-form label { flex: 1; }
+  .memories { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+  .memories li { display: flex; gap: 0.8rem; align-items: center; padding: 0.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 6px; }
+  .memories li span { flex: 1; }
+  .memories time { color: var(--muted-foreground); font-size: 0.8rem; }
 
-.chat { display: flex; flex-direction: column; min-height: 0; padding: 1rem; }
-.messages { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
-.message { max-width: 70ch; padding: 0.5rem 0.8rem; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); }
-.message p { margin: 0; white-space: pre-wrap; }
-.message.user { align-self: flex-end; background: var(--user); }
-.message.tool, .tool-call { font-size: 0.85rem; color: var(--muted); }
-.composer { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-.composer textarea { flex: 1; resize: vertical; }
-
-.memories-page { max-width: 48rem; margin: 0 auto; padding: 1rem; width: 100%; }
-.memory-form { display: flex; gap: 0.5rem; align-items: flex-end; }
-.memory-form label { flex: 1; }
-.memories { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
-.memories li { display: flex; gap: 0.8rem; align-items: center; padding: 0.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
-.memories li span { flex: 1; }
-.memories time { color: var(--muted); font-size: 0.8rem; }
-
-@media (max-width: 640px) {
-  .workspace { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-  .threads { border-right: 0; border-bottom: 1px solid var(--border); max-height: 40vh; }
-  .header { flex-wrap: wrap; }
+  @media (max-width: 640px) {
+    .workspace { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    .threads { border-right: 0; border-bottom: 1px solid var(--border); max-height: 40vh; }
+    .header { flex-wrap: wrap; }
+  }
 }
