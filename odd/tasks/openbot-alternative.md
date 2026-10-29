@@ -137,3 +137,11 @@ Pendiente de decisión del usuario:
 - (e) se acepta como riesgo y queda documentado en S5.
 
 **L16** Revisión RDD de `e161ebd..fb50b0c`: aprobada, con acknowledgement hecho. Su aviso principal era que un proveedor caído que responde con un 5xx en HTML o con `server_error`/`temporarily_unavailable` seguía dando 400. Arreglado en `94fb30f`: RED 3/3 → GREEN 81/81; un `code` rechazado por el proveedor sigue dando 400.
+
+**L17** Revisión RDD del arreglo de caídas: aprobada, con acknowledgement hecho. Avisos menores que quedan como seguimiento:
+- falta un test de `error=server_error` en la propia redirección de la callback;
+- falta un test de un 400 con `server_error`;
+- `OAUTH_RESPONSE_IS_NOT_CONFORM` también convierte en 502 un 200 que no es conforme;
+- los tests de caída no comprueban que no se crea sesión.
+
+T7 queda cerrada. **Siguiente: T8** (app web).
