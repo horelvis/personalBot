@@ -81,7 +81,7 @@ Cita: «El código es MIT, pero una pieza crítica es comercial. Y el README lle
 | T5 | S3 | inline | [x] Memoria: store, herramientas `remember`/`recall`, inyección en contexto | ffca3fc |
 | T6 | S6 | inline | [x] Gateway de herramientas: política + auditoría | 11a3e05 |
 | T7 | S5 | inline | [x] Autenticación OIDC, roles, modo usuario único solo en desarrollo. Commits: (a) sesiones + `SINGLE_USER`, (b) OIDC, (c) roles + `/api/bots`, arreglo de colisión de email | 71fbca3, 3de4e13, 8d13cf6, 50bc212 |
-| T8 | S2, S4 | delegada (motivo: límite de contexto de la sesión padre) | [ ] App web: lista de hilos, chat con streaming, memorias | |
+| T8 | S2, S4 | delegada (motivo: límite de contexto de la sesión padre) | [x] App web: lista de hilos, chat con streaming, memorias | 0dd8636 |
 | T9 | S7, S8 | inline | [ ] Dockerfile + compose completo, README honesto, LICENSE MIT | |
 
 ## Log
@@ -145,3 +145,10 @@ Pendiente de decisión del usuario:
 - los tests de caída no comprueban que no se crea sesión.
 
 T7 queda cerrada. **Siguiente: T8** (app web).
+
+**L18** T8 (writer delegado): workspace `web/` con React 19.3.1 y Vite 8.3.5. El cliente API está separado de los contenedores y estos de los componentes presentacionales; CSS plano. RED 7/7 → GREEN 7/7, `tsc` exit 0, `vite build` correcto, servidor 81/81, `npm audit --omit=dev` = 0. El padre comprobó que el diff no sale de las rutas autorizadas, volvió a ejecutar los tests (7/7 y 81/81) y confirmó que no hay HTML sin escapar. Commit `0dd8636`. Huecos:
+- el arranque en navegador contra un servidor real sigue sin probarse;
+- el formulario de memorias se vacía aunque falle al guardar;
+- `/api/me` no reintenta tras un error que no sea 401.
+
+Risk: item 5 (dependencias nuevas y un workspace nuevo en el lockfile raíz). **Siguiente: T9.**
